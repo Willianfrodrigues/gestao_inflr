@@ -148,9 +148,9 @@ tbody td{padding:10px 13px;font-size:12.5px;}
 
 /* ── PLATFORM ─── */
 .plt{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;}
-.plt-meta{background:rgba(24,119,242,.15);color:#1877F2;}
-.plt-tiktok{background:rgba(0,0,0,.08);color:#333;border:1px solid rgba(0,0,0,.12);}
-.plt-dv360{background:rgba(66,133,244,.15);color:#4285F4;}
+.plt-meta{background:rgba(24,119,242,.12);color:#1877F2;border:1px solid rgba(24,119,242,.25);}
+.plt-tiktok{background:rgba(0,0,0,.07);color:#000;border:1px solid rgba(0,0,0,.15);}
+.plt-dv360{background:rgba(52,168,83,.12);color:#34A853;border:1px solid rgba(52,168,83,.25);}
 .plt-both{background:var(--purple-bg);color:var(--purple);}
 
 /* ── FORMS ─── */
@@ -1157,24 +1157,29 @@ async function renderGerencial(){
   }
 
   const maxImp=Math.max(...S.camps.map(c=>campImp(c)),1);
-  $('ger-tbody').innerHTML=S.camps.map(c=>{
+  const gerRows=[];
+  S.camps.forEach(function(c){
     const cli=cliById(c.cid);
-    const imp=campImp(c);
-    const custo=campCost(c);
-    const rec=c.investimento||0;
-    const ipct=(imp/maxImp*100).toFixed(1);
     const pltsArr=Array.isArray(c.plt)?c.plt:[c.plt||'meta'];
-    const pltBadges=pltsArr.map(p=>'<span class="plt '+(p==='tiktok'?'plt-tiktok':p==='dv360'?'plt-dv360':'plt-meta')+'" style="margin-right:2px;">'+(PLT_LBL[p]||p)+'</span>').join('');
-    return`<tr>
-      <td style="font-size:11.5px;font-weight:600;max-width:160px;">${c.nome}</td>
-      <td><span style="display:inline-flex;align-items:center;gap:5px;"><span class="dot" style="background:${cli?.cor||'#888'}"></span>${cli?.nome||'—'}</span></td>
-      <td>${pltBadges}</td>
-      <td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:${ipct}%;background:${cli?.cor||'var(--gold)'}"></div></div><span class="bar-v">${fmt(imp)}</span></div></td>
-      <td style="color:var(--red);font-weight:600;">${fmtR(custo)}</td>
-      <td style="color:var(--gold);font-weight:700;">${c.investimento?fmtR(c.investimento):'—'}</td>
-      <td>${campStatus(c)}</td>
-    </tr>`;
-  }).join('');
+    const hasPltData=Object.keys(c._kpiByPlt||{}).length>0;
+    pltsArr.forEach(function(p){
+      const pltKpi=hasPltData?(c._kpiByPlt||{})[p]||null:null;
+      const imp=pltKpi?Number(pltKpi.impressions||0):campImp(c);
+      if(hasPltData&&!imp) return;
+      const custo=hasPltData?(imp/1000*(c.cpmCli||0)):campCost(c);
+      const ipct=(imp/maxImp*100).toFixed(1);
+      const pltClass=p==='tiktok'?'plt-tiktok':p==='dv360'?'plt-dv360':'plt-meta';
+      gerRows.push('<tr>'
+        +'<td style="font-size:11.5px;font-weight:600;max-width:160px;">'+c.nome+'</td>'
+        +'<td><span style="display:inline-flex;align-items:center;gap:5px;"><span class="dot" style="background:'+(cli?.cor||'#888')+'"></span>'+(cli?.nome||'—')+'</span></td>'
+        +'<td><span class="plt '+pltClass+'">'+(PLT_LBL[p]||p)+'</span></td>'
+        +'<td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:'+ipct+'%;background:'+(cli?.cor||'var(--gold)')+'"></div></div><span class="bar-v">'+fmt(imp)+'</span></div></td>'
+        +'<td style="color:var(--red);font-weight:600;">'+fmtR(custo)+'</td>'
+        +'<td style="color:var(--gold);font-weight:700;">'+(c.investimento?fmtR(c.investimento):'—')+'</td>'
+        +'<td>'+campStatus(c)+'</td></tr>');
+    });
+  });
+  $('ger-tbody').innerHTML=gerRows.join('');
 }
 
 

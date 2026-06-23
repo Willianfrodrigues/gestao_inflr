@@ -579,12 +579,12 @@ tbody td{padding:10px 13px;font-size:12.5px;}
       <div class="panel" id="panel-adm-influenciadores">
         <div class="page-hd"><div class="page-title">Influenciadores</div><div class="page-sub">AD Names por campanha com nome extraído automaticamente. Edite para corrigir.</div></div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
-          <select id="infl-camp-sel" onchange="renderInflAdmin()" style="padding:8px 13px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12.5px;color:var(--text);font-family:'Inter',sans-serif;outline:none;min-width:220px;">
+          <select id="infl-camp-sel" onchange="loadInflAdmin()" style="padding:8px 13px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12.5px;color:var(--text);font-family:'Inter',sans-serif;outline:none;min-width:220px;">
             <option value="">Todas as campanhas</option>
           </select>
           <input id="infl-admin-search" placeholder="🔍 Buscar AD Name, influenciador ou AD Group..." oninput="renderInflAdmin()"
             style="flex:1;min-width:220px;padding:8px 13px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12.5px;color:var(--text);font-family:'Inter',sans-serif;outline:none;">
-          <select id="infl-match-filter" onchange="renderInflAdmin()" style="padding:8px 13px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12.5px;color:var(--text);font-family:'Inter',sans-serif;outline:none;">
+          <select id="infl-match-filter" onchange="loadInflAdmin()" style="padding:8px 13px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12.5px;color:var(--text);font-family:'Inter',sans-serif;outline:none;">
             <option value="">Todos</option>
             <option value="matched">Com correspondência</option>
             <option value="unmatched">Sem correspondência ⚠️</option>
@@ -2241,37 +2241,45 @@ function initInflAdmin(){
   if(!sel) return;
   sel.innerHTML = '<option value="">Todas as campanhas</option>' +
     S.camps.map(function(c){return '<option value="'+c.id+'">'+c.nome+'</option>';}).join('');
-  renderInflAdmin();
+  loadInflAdmin();
 }
 
-function renderInflAdmin(){
+async function loadInflAdmin(){
   const tbody = $('infl-admin-tbody');
   const count = $('infl-admin-count');
   if(!tbody) return;
 
-  const campId     = ($('infl-camp-sel')||{}).value||'';
-  const search     = (($('infl-admin-search')||{}).value||'').toLowerCase().trim();
-  const matchFilter= ($('infl-match-filter')||{}).value||'';
+  const campId = ($('infl-camp-sel')||{}).value||'';
+  const camp   = S.camps.find(function(c){return c.id===campId;});
 
-  // Mock com AD Group — virá do BigQuery (campo adset_name ou ad_group_name)
-  const allAds = [
-    {ad:'BRUNA NAOMI | MARÇO MÁSCARA',       group:'Conjunto Skala Awareness BR',      campId:S.camps[0]?.id||''},
-    {ad:'LU LORICCHIO | CONTEÚDO REELS PÓS EVENTO', group:'Conjunto Skala Awareness BR', campId:S.camps[0]?.id||''},
-    {ad:'ALAN VIVIAN | REELS + STORIES | CONTEÚDO REELS 1', group:'Conjunto Reels Meta', campId:S.camps[0]?.id||''},
-    {ad:'Skala | Institucional | Awareness | Virginia Martuchello | Reels', group:'Conjunto Virginia Skala', campId:S.camps[1]?.id||''},
-    {ad:'DUDA PERSSON | CONTEÚDO REELS',     group:'Conjunto Reels Meta',              campId:S.camps[1]?.id||''},
-    {ad:'Air Fryer 2025 | Awareness | Brino | 02', group:'Conjunto Brino BR',          campId:S.camps[1]?.id||''},
-    {ad:'CAMILA LOURES - BR',                group:'Conjunto Camila Loures Meta',      campId:S.camps[2]?.id||''},
-    {ad:'CANAL BRA | POST CROÁCIA',          group:'Conjunto Canal BRA Copa',          campId:S.camps[2]?.id||''},
-    {ad:'ts-hlr-awa-prdrev-inf-w-2p-inter-leil_ts-hlr-prdrev-inf-keirariff-reels-60-adv', group:'Conjunto TikTok Awareness', campId:S.camps[2]?.id||''},
-    {ad:'Mais Mu - Thalya Hillebrant - Suplementos (Creatina) - Consideracao - Feed', group:'Conjunto Thalya Feed', campId:S.camps[0]?.id||''},
-    {ad:'GABRIEL BRAGA | STORY 1',           group:'Conjunto Gabriel Meta',            campId:S.camps[0]?.id||''},
-    {ad:'FAUSTO MENZINHO | REELS',           group:'Conjunto Fausto Meta',             campId:S.camps[1]?.id||''},
-    {ad:'DANI CACELLA - BR',                 group:'Conjunto Dani Cacella BR',         campId:S.camps[2]?.id||''},
-    {ad:'Apsen Adequa | Crossmedia | Consideração | Drogaria SP | Viviane Zaith', group:'Conjunto Viviane DV360', campId:S.camps[0]?.id||''},
-    {ad:'PREVENT_JURAMENTO_30s_Web',         group:'Conjunto Programática Web',        campId:S.camps[1]?.id||''},
-    {ad:'300X250',                           group:'Conjunto Display Banner',          campId:S.camps[1]?.id||''},
-  ];
+  // Sem campanha selecionada — pedir para selecionar
+  if(!campId || !camp){
+    tbody.innerHTML='<tr><td colspan="6"><div class="empty"><p>Selecione uma campanha para ver os AD Names.</p></div></td></tr>';
+    if(count) count.textContent = '—';
+    const alertWrap = $('infl-alerta-wrap');
+    if(alertWrap) alertWrap.style.display='none';
+    return;
+  }
+
+  tbody.innerHTML='<tr><td colspan="6"><div class="empty"><p>Carregando...</p></div></td></tr>';
+
+  // Buscar datas da campanha
+  const start = camp.ini || new Date().toISOString().split('T')[0];
+  const end   = camp.fim || new Date().toISOString().split('T')[0];
+
+  const data = await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+campId+'&start_date='+start+'&end_date='+end);
+  if(!data || data.error){
+    tbody.innerHTML='<tr><td colspan="6"><div class="empty"><p>Erro ao carregar dados: '+(data?.error||'falha')+'</p></div></td></tr>';
+    return;
+  }
+
+  // Montar allAds a partir dos dados reais do BigQuery
+  const allAds = (data.rows||[]).map(function(r){
+    return {ad: r.AD_NAME||r.influenciador||'', group: r.CAMPAIGN_NAME||'', campId: campId};
+  });
+
+  const search      = (($('infl-admin-search')||{}).value||'').toLowerCase().trim();
+  const matchFilter = ($('infl-match-filter')||{}).value||'';
 
   // Filtrar
   let filtered = allAds.filter(function(r){
@@ -2418,7 +2426,7 @@ function saveInflEdit(i){
     toast('Correção removida.', 's');
   }
   cancelInflEdit(i);
-  renderInflAdmin();
+  loadInflAdmin();
 }
 
 

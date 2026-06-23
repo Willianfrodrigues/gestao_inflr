@@ -1,0 +1,10 @@
+[project]
+name = "inflr-gestao"
+version = "1.0.0"
+requires-python = "==3.9.*"
+dependencies = [
+    "psycopg2-binary==2.9.9",
+    "PyJWT==2.8.0",
+    "google-cloud-bigquery==3.20.1",
+    "google-auth==2.29.0",
+]

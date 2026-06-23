@@ -1605,58 +1605,47 @@ async function renderCliView(cid){
       <div class="tbl-top"><div class="tbl-ttl">Análise por Campanha</div><span class="badge bg-gray">${cs.length} campanhas</span></div>
       <div class="tbl-wrap"><table>
         <thead><tr><th>Campanha</th><th>Plataforma</th>${show.includes('impressions')?'<th>Impressões</th>':''}${show.includes('clicks')?'<th>Cliques</th>':''}${show.includes('ctr')?'<th>CTR</th>':''}${show.includes('thruplay')?'<th>ThruPlay</th>':''}${show.includes('vtr')?'<th>VTR</th>':''}${show.includes('reach')?'<th>Alcance</th>':''}${show.includes('comments')?'<th>Coment.</th>':''}${show.includes('likes')?'<th>Curtidas</th>':''}${show.includes('shares')?'<th>Compart.</th>':''}${show.includes('views100')?'<th>Views 100%</th>':''}<th>Status</th></tr></thead>
-        <tbody>${cs.map(c=>{
-          const ci=Number((c._kpi||{}).impressions||0);const cc=Number((c._kpi||{}).clicks_link||(c._kpi||{}).clicks||0);const ct=Number((c._kpi||{}).thruplay||0);const cr=Number((c._kpi||{}).reach||0);
+        <tbody>${(function(){
           const mImp=Math.max(...cs.map(x=>Number((x._kpi||{}).impressions||0)),1);
-          const ipct=(ci/mImp*100).toFixed(1);
-          const pltClass=c.plt==='tiktok'?'plt-tiktok':c.plt==='dv360'?'plt-dv360':'plt-meta';
-          return`<tr><td style="font-size:11.5px;font-weight:600;max-width:160px;">${c.nome}</td><td><span class="plt ${pltClass}">${PLT_LBL[c.plt]||c.plt}</span></td>${show.includes('impressions')?'<td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:'+ipct+'%;background:'+cor+';"></div></div><span class="bar-v">'+fmt(ci)+'</span></div></td>':''}${show.includes('clicks')?'<td style="color:var(--green);font-weight:600;">'+fmt(cc)+'</td>':''}${show.includes('ctr')?'<td style="color:var(--pink);">'+fmtP(ci?(cc/ci*100):0)+'</td>':''}${show.includes('thruplay')?'<td>'+fmt(ct)+'</td>':''}${show.includes('vtr')?'<td style="color:var(--purple);font-weight:600;">'+fmtP(ci?(ct/ci*100):0)+'</td>':''}${show.includes('reach')?'<td>'+fmt(cr)+'</td>':''}${show.includes('comments')?'<td>'+fmt(Number((c._kpi||{}).comments||0))+'</td>':''}${show.includes('likes')?'<td style="color:var(--pink);">'+fmt(Number((c._kpi||{}).reactions||0))+'</td>':''}${show.includes('shares')?'<td>'+fmt(Number((c._kpi||{}).shares||0))+'</td>':''}${show.includes('views100')?'<td>'+fmt(Number((c._kpi||{}).views100||0))+'</td>':''}<td>${campStatus(c)}</td></tr>`;
-        }).join('')}</tbody>
+          const rows=[];
+          cs.forEach(function(c){
+            const plts=Array.isArray(c.plt)?c.plt:[c.plt||'meta'];
+            // One row per platform
+            plts.forEach(function(plt){
+              const ci=Number((c._kpi||{}).impressions||0);
+              const cc=Number((c._kpi||{}).clicks_link||(c._kpi||{}).clicks||0);
+              const ct=Number((c._kpi||{}).thruplay||0);
+              const cr=Number((c._kpi||{}).reach||0);
+              if(!ci && plts.length>1) return; // skip zero-imp rows when multiple platforms
+              const ipct=(ci/mImp*100).toFixed(1);
+              const pltClass=plt==='tiktok'?'plt-tiktok':plt==='dv360'?'plt-dv360':'plt-meta';
+              rows.push('<tr>'
+                +'<td style="font-size:11.5px;font-weight:600;max-width:160px;">'+c.nome+'</td>'
+                +'<td><span class="plt '+pltClass+'">'+(PLT_LBL[plt]||plt)+'</span></td>'
+                +(show.includes('impressions')?'<td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:'+ipct+'%;background:'+cor+';"></div></div><span class="bar-v">'+fmt(ci)+'</span></div></td>':'')
+                +(show.includes('clicks')?'<td style="color:var(--green);font-weight:600;">'+fmt(cc)+'</td>':'')
+                +(show.includes('ctr')?'<td style="color:var(--pink);">'+fmtP(ci?(cc/ci*100):0)+'</td>':'')
+                +(show.includes('thruplay')?'<td>'+fmt(ct)+'</td>':'')
+                +(show.includes('vtr')?'<td style="color:var(--purple);font-weight:600;">'+fmtP(ci?(ct/ci*100):0)+'</td>':'')
+                +(show.includes('reach')?'<td>'+fmt(cr)+'</td>':'')
+                +(show.includes('comments')?'<td>'+fmt(Number((c._kpi||{}).comments||0))+'</td>':'')
+                +(show.includes('likes')?'<td style="color:var(--pink);">'+fmt(Number((c._kpi||{}).reactions||0))+'</td>':'')
+                +(show.includes('shares')?'<td>'+fmt(Number((c._kpi||{}).shares||0))+'</td>':'')
+                +(show.includes('views100')?'<td>'+fmt(Number((c._kpi||{}).views100||0))+'</td>':'')
+                +'<td>'+campStatus(c)+'</td></tr>');
+            });
+          });
+          return rows.join('');
+        })()}</tbody>
       </table></div>
     </div>
   </div>
 
   </div>
 
-  ${show.includes('influencers')?`
-  <div id="cli-panel-influencers" style="display:none;">
-    <div class="sec-lbl" style="margin-top:0;">🏆 Top Influenciadores</div>
-    <div style="margin-bottom:20px;">
-      <div class="podium-wrap">
-        ${podOrd.map((inf,i)=>{
-          const oi=podIdx[i]||i;const col=pColors[oi]||cor;const h=pHeights[oi]||'80px';
-          return`<div class="podium-col"><div class="podium-info"><div class="podium-medal">${medals[oi]||''}</div><div class="podium-name">${inf.name}</div><div class="podium-val" style="color:${col};">${fmt(inf.imp)}</div><div class="podium-sub">impressões</div></div><div class="podium-bar" style="height:${h};background:${col}18;border-color:${col}44;"></div></div>`;
-        }).join('')}
-      </div>
-    </div>
-    <div class="tbl-card">
-      <div class="tbl-top"><div class="tbl-ttl">Ranking Completo</div><span class="badge bg-gray">${inflData.length} influenciadores</span></div>
-      <div class="tbl-wrap"><table>
-        <thead><tr><th>#</th><th>Influenciador</th><th>Impressões</th>${show.includes('clicks')?'<th>Cliques</th>':''}${show.includes('ctr')?'<th>CTR</th>':''}${show.includes('thruplay')?'<th>ThruPlay</th>':''}${show.includes('vtr')?'<th>VTR</th>':''}</tr></thead>
-        <tbody>${inflData.map((inf,i)=>{
-          const mI=inflData[0].imp||1;
-          const ipct=(inf.imp/mI*100).toFixed(1);
-          const med=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-size:11px;">${i+1}</span>`;
-          return`<tr><td style="text-align:center;">${med}</td><td style="font-weight:600;">${inf.name}</td><td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:${ipct}%;background:${cor};"></div></div><span class="bar-v">${fmt(inf.imp)}</span></div></td>${show.includes('clicks')?'<td style="color:var(--green);font-weight:600;">'+fmt(inf.clk)+'</td>':''}${show.includes('ctr')?'<td style="color:var(--pink);">'+fmtP(inf.imp?(inf.clk/inf.imp*100):0)+'</td>':''}${show.includes('thruplay')?'<td>'+fmt(inf.tp)+'</td>':''}${show.includes('vtr')?'<td style="color:var(--purple);font-weight:600;">'+fmtP(inf.imp?(inf.tp/inf.imp*100):0)+'</td>':''}</tr>`;
-        }).join('')}</tbody>
-      </table></div>
-    </div>
-  </div>`:''}
+  ${show.includes('influencers')?'<div id="cli-panel-influencers" style="display:none;"><div class="empty"><p>Clique na aba para carregar.</p></div></div>':''}
 
-  ${show.includes('adname')?`
-  <div id="cli-panel-adname" style="display:none;">
-    <div class="tbl-card">
-      <div class="tbl-top"><div class="tbl-ttl">Análise por Ad Name</div><span class="badge bg-gray">${adData.length} anúncios</span></div>
-      <div class="tbl-wrap"><table>
-        <thead><tr><th>Ad Name</th><th>Plataforma</th><th>Impressões</th>${show.includes('clicks')?'<th>Cliques</th>':''}${show.includes('ctr')?'<th>CTR</th>':''}${show.includes('thruplay')?'<th>ThruPlay</th>':''}${show.includes('vtr')?'<th>VTR</th>':''}</tr></thead>
-        <tbody>${adData.map(ad=>{
-          const mI=adData[0].imp||1;const ipct=(ad.imp/mI*100).toFixed(1);
-          const pltClass=ad.plt==='tiktok'?'plt-tiktok':ad.plt==='dv360'?'plt-dv360':'plt-meta';
-          return`<tr><td style="font-weight:600;font-size:12px;">${ad.ad}</td><td><span class="plt ${pltClass}">${PLT_LBL[ad.plt]||ad.plt}</span></td><td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:${ipct}%;background:${cor};"></div></div><span class="bar-v">${fmt(ad.imp)}</span></div></td>${show.includes('clicks')?'<td style="color:var(--green);font-weight:600;">'+fmt(ad.clk)+'</td>':''}${show.includes('ctr')?'<td style="color:var(--pink);">'+fmtP(ad.imp?(ad.clk/ad.imp*100):0)+'</td>':''}${show.includes('thruplay')?'<td>'+fmt(ad.tp)+'</td>':''}${show.includes('vtr')?'<td style="color:var(--purple);font-weight:600;">'+fmtP(ad.vtr)+'</td>':''}</tr>`;
-        }).join('')}</tbody>
-      </table></div>
-    </div>
-  </div>`:''}
+  ${show.includes('adname')?'<div id="cli-panel-adname" style="display:none;"><div class="empty"><p>Clique na aba para carregar.</p></div></div>':''}
 
   <div id="cli-panel-campanhas" style="display:none;">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">

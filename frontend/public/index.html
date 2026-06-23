@@ -51,10 +51,12 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#EAF8F5 0%
 
 /* ── CLIENT MODE ─── */
 #app-shell.client-mode .topbar { display: none !important; }
+#app-shell.client-mode .sb-tagline { display: none !important; }
+#app-shell.client-mode .sb-brand { padding-bottom: 14px; }
 #app-shell.client-mode #cv-sel { display: none !important; }
 #app-shell.client-mode #cv-admin-header { display: none !important; }
 #app-shell.client-mode #panel-cliente-view > div:first-child { flex-direction: column; }
-#app-shell.client-mode .content { padding-top: 16px; }
+#app-shell.client-mode .content { padding-top: 0; }
 #app-shell.client-mode .sb-tagline { display: none; }
 
 /* ── LOGIN SCREEN ─── */
@@ -805,6 +807,11 @@ async function showApp() {
     if(topbar) topbar.style.display = 'none';
     // Ocultar header "Ver como Cliente" + select
     document.getElementById('app-shell').classList.add('client-mode');
+    // Fix sticky header position since topbar is hidden
+    setTimeout(function(){
+      const stickyHdr = document.getElementById('cli-sticky-header');
+      if(stickyHdr) stickyHdr.style.top = '0';
+    }, 600);
     // Ir direto para Ver como Cliente
     goTo('cliente-view', document.querySelector('.nav-item'));
     // Auto-selecionar o cliente correspondente
@@ -1656,7 +1663,7 @@ async function renderCliView(cid){
 
   updateCliDateDisplay();
   $('cv-content').innerHTML=`
-  <div style="background:${corBg};border-bottom:1px solid ${corBd};padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;margin:-22px -24px 22px;position:sticky;top:54px;z-index:40;">
+  <div id="cli-sticky-header" style="background:${corBg};border-bottom:1px solid ${corBd};padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;margin:-22px -24px 22px;position:sticky;top:54px;z-index:40;">
     <div style="display:flex;align-items:center;gap:12px;">${logoHtml}</div>
     <div style="display:flex;align-items:center;gap:6px;" id="cli-date-controls">
       <div class="date-box" style="border-color:${corBd};">📅

@@ -52,6 +52,11 @@ class handler(BaseHTTPRequestHandler):
                     kws, ex = list(row[0] or []), list(row[1] or [])
 
             f = build_camp_filter(kws, ex)
+        # Add platform filter if specified
+        if plt:
+            plt_map = {'meta':'Meta','tiktok':'TikTok','dv360':'Google DV360'}
+            plt_val = plt_map.get(plt.lower(), plt)
+            f = f + f" AND LOWER(platform) = '{plt_val.lower()}'"
 
             if type_ == "kpi":
                 q = f"""

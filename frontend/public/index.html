@@ -1607,7 +1607,7 @@ async function renderCliView(cid){
     <div class="tbl-card">
       <div class="tbl-top"><div class="tbl-ttl">Análise por Campanha</div><span class="badge bg-gray">${cs.length} campanhas</span></div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>Campanha</th><th>Plataforma</th>${show.includes('impressions')?'<th>Impressões</th>':''}${show.includes('clicks')?'<th>Cliques</th>':''}${show.includes('ctr')?'<th>CTR</th>':''}${show.includes('thruplay')?'<th>ThruPlay</th>':''}${show.includes('vtr')?'<th>VTR</th>':''}${show.includes('reach')?'<th>Alcance</th>':''}${show.includes('comments')?'<th>Coment.</th>':''}${show.includes('likes')?'<th>Curtidas</th>':''}${show.includes('shares')?'<th>Compart.</th>':''}${show.includes('views100')?'<th>Views 100%</th>':''}<th>Status</th></tr></thead>
+        <thead><tr><th>Campanha</th><th>Plataforma</th>${show.includes('impressions')?'<th>Impressões</th>':''}${show.includes('clicks')?'<th>Cliques</th>':''}${show.includes('ctr')?'<th>CTR</th>':''}${show.includes('thruplay')?'<th>ThruPlay</th>':''}${show.includes('vtr')?'<th>VTR</th>':''}${show.includes('comments')?'<th>Coment.</th>':''}${show.includes('likes')?'<th>Curtidas</th>':''}${show.includes('shares')?'<th>Compart.</th>':''}${show.includes('views100')?'<th>Views 100%</th>':''}<th>Status</th></tr></thead>
         <tbody>${(function(){
           const mImp=Math.max(...cs.map(x=>Number((x._kpi||{}).impressions||0)),1);
           const rows=[];
@@ -1630,7 +1630,7 @@ async function renderCliView(cid){
                 +(show.includes('ctr')?'<td style="color:var(--pink);">'+fmtP(ci?(cc/ci*100):0)+'</td>':'')
                 +(show.includes('thruplay')?'<td>'+fmt(ct)+'</td>':'')
                 +(show.includes('vtr')?'<td style="color:var(--purple);font-weight:600;">'+fmtP(ci?(ct/ci*100):0)+'</td>':'')
-                +(show.includes('reach')?'<td>'+fmt(cr)+'</td>':'')
+                
                 +(show.includes('comments')?'<td>'+fmt(Number((c._kpi||{}).comments||0))+'</td>':'')
                 +(show.includes('likes')?'<td style="color:var(--pink);">'+fmt(Number((c._kpi||{}).reactions||0))+'</td>':'')
                 +(show.includes('shares')?'<td>'+fmt(Number((c._kpi||{}).shares||0))+'</td>':'')
@@ -1662,7 +1662,7 @@ async function renderCliView(cid){
         if(show.includes('ctr'))rows+=`<div class="cmp-row"><span class="cmp-lbl">CTR</span><span class="cmp-val" style="color:var(--pink);">${fmtP(ci?(cc/ci*100):0)}</span></div>`;
         if(show.includes('thruplay'))rows+=`<div class="cmp-row"><span class="cmp-lbl">ThruPlay</span><span class="cmp-val">${fmt(ct)}</span></div>`;
         if(show.includes('vtr'))rows+=`<div class="cmp-row"><span class="cmp-lbl">VTR</span><span class="cmp-val" style="color:var(--purple);">${fmtP(ci?(ct/ci*100):0)}</span></div>`;
-        if(show.includes('reach'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Alcance</span><span class="cmp-val">${fmt(cr)}</span></div>`;
+        
         if(show.includes('comments'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Comentários</span><span class="cmp-val">${fmt(Number((c._kpi||{}).comments||0))}</span></div>`;
         if(show.includes('likes'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Curtidas</span><span class="cmp-val" style="color:var(--pink);">${fmt(Number((c._kpi||{}).reactions||0))}</span></div>`;
         if(show.includes('shares'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Compart.</span><span class="cmp-val">${fmt(Number((c._kpi||{}).shares||0))}</span></div>`;

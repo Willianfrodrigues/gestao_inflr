@@ -1524,7 +1524,8 @@ async function renderCliView(cid){
 
   const avgVtr=totImp?(totTP/totImp*100):0;
   const avgCtr=totImp?(totClk/totImp*100):0;
-  const totCost=cs.reduce((s,c)=>s+(parseFloat(c.investimento)||0),0);
+  // Custo pelo CPM contratado = impressões × CPM cliente / 1000
+  const totCost=cs.reduce((s,c)=>s+Number((c._kpi||{}).impressions||0)/1000*(c.cpmCli||0),0);
   const cliRec=totCost;
 
   // Gráfico — série diária real
@@ -1547,7 +1548,7 @@ async function renderCliView(cid){
     thruplay:{l:'ThruPlay',v:fmt(totTP),c:'#FF8C42',sub:'vídeos completos'},
     vtr:{l:'VTR',v:fmtP(avgVtr),c:'#9D6FFF',sub:'view through rate'},
     // reach ausente dos KPIs
-    cost:{l:'Investimento',v:fmtR(totCost),c:'#FF4D4D',sub:'custo estimado'},
+    cost:{l:'Investimento',v:fmtR(totCost),c:'#FF4D4D',sub:'CPM contratado × impressões'},
     comments:{l:'Comentários',v:fmt(cs.reduce((s,c)=>s+Number((c._kpi||{}).comments||0),0)),c:'#2DD9E8',sub:'total'},
     likes:{l:'Curtidas',v:fmt(cs.reduce((s,c)=>s+Number((c._kpi||{}).reactions||0),0)),c:'#FF4D8D',sub:'total'},
     shares:{l:'Compartilhamentos',v:fmt(cs.reduce((s,c)=>s+Number((c._kpi||{}).shares||0),0)),c:'#9D6FFF',sub:'total'},
@@ -1666,7 +1667,7 @@ async function renderCliView(cid){
         if(show.includes('likes'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Curtidas</span><span class="cmp-val" style="color:var(--pink);">${fmt(Number((c._kpi||{}).reactions||0))}</span></div>`;
         if(show.includes('shares'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Compart.</span><span class="cmp-val">${fmt(Number((c._kpi||{}).shares||0))}</span></div>`;
         if(show.includes('views100'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Views 100%</span><span class="cmp-val">${fmt(Number((c._kpi||{}).views100||0))}</span></div>`;
-        if(show.includes('cost'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Investimento</span><span class="cmp-val" style="color:var(--gold);">${fmtR(c.investimento||0)}</span></div>`;
+        if(show.includes('cost'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Investimento</span><span class="cmp-val" style="color:var(--gold);">${fmtR(Number((c._kpi||{}).impressions||0)/1000*(c.cpmCli||0))}</span></div>`;
         return`<div class="cmp-card" style="border-top:3px solid ${cor};"><div class="cmp-card-top"><div><div class="cmp-card-name" style="font-size:11.5px;max-width:180px;">${c.nome}</div><div style="display:flex;gap:4px;margin-top:5px;"><span class="plt ${pltClass}">${PLT_LBL[c.plt]||c.plt}</span><span class="badge bg-gold">${CLK_LBL[c.clk]||c.clk}</span></div></div>${campStatus(c)}</div><div class="cmp-rows">${rows}</div></div>`;
       }).join('')}
     </div>

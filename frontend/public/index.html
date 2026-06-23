@@ -1431,7 +1431,7 @@ function populateCvSel(){
   $('cv-sel').innerHTML='<option value="">Selecione um cliente...</option>'+S.clients.map(c=>'<option value="'+c.id+'">'+c.nome+'</option>').join('');
 }
 
-function renderCliView(cid){
+async function renderCliView(cid){
   if(!cid){$('cv-content').innerHTML='<div class="empty"><div style="font-size:40px;opacity:.15;margin-bottom:10px;">👁</div><p style="font-size:13px;">Selecione um cliente.</p></div>';return;}
   const cli=cliById(cid);if(!cli)return;
   const cs=campsOf(cid);
@@ -1441,54 +1441,56 @@ function renderCliView(cid){
   const corBg=`rgba(${corRgb},0.08)`;
   const corBd=`rgba(${corRgb},0.22)`;
 
-  // Totais
-  const totImp=cs.reduce((s,c)=>s+totalMetric(c,'imp'),0);
-  const totClk=cs.reduce((s,c)=>s+totalMetric(c,'clk'),0);
-  const totTP=cs.reduce((s,c)=>s+totalMetric(c,'tp'),0);
-  const totReach=cs.reduce((s,c)=>s+totalMetric(c,'reach'),0);
-  const avgVtr=totImp?(totTP/totImp*100):0;
-  const avgCtr=totImp?(totClk/totImp*100):0;
-  const totCost=cs.reduce((s,c)=>s+totalMetric(c,'imp')/1000*(c.cpmCusto||0),0);
-  const cliRec=totImp/1000*(cli.cpm||0);
+  // Buscar datas consolidadas das campanhas do cliente
+  const today = new Date().toISOString().split('T')[0];
+  const inis = cs.map(c=>c.ini).filter(Boolean).sort();
+  const fins = cs.map(c=>c.fim).filter(Boolean).sort();
+  const start = inis[0] || today;
+  const end   = fins[fins.length-1] || today;
 
-  // Gráfico — série diária (18 dias)
-  const labels=Array.from({length:18},(_,i)=>{const d=new Date('2026-06-01');d.setDate(d.getDate()+i);return (d.getDate())+'/0'+(d.getMonth()+1);});
-  const aggImp=Array(18).fill(0);
-  const aggClk=Array(18).fill(0);
-  const aggTP=Array(18).fill(0);
-  const aggReach=Array(18).fill(0);
-  cs.forEach(c=>{
-    if(c.data){
-      ['imp','clk','tp','reach'].forEach((k,ki)=>{
-        const arr=[aggImp,aggClk,aggTP,aggReach][ki];
-        (c.data[k]||[]).forEach((v,i)=>{if(i<18)arr[i]+=v;});
+  // Buscar KPIs e timeseries reais do BigQuery para cada campanha
+  let totImp=0,totClk=0,totTP=0,totReach=0;
+  const aggMap={};
+  
+  await Promise.all(cs.map(async function(c){
+    const [kpi, ts] = await Promise.all([
+      apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+(c.ini||start)+'&end_date='+(c.fim||end)),
+      apiFetch('/api/gestao/data?type=timeseries&camp_id='+c.id+'&start_date='+(c.ini||start)+'&end_date='+(c.fim||end))
+    ]);
+    if(kpi && !kpi.error){
+      totImp  += Number(kpi.impressions||0);
+      totClk  += Number(kpi.clicks_link||kpi.clicks||0);
+      totTP   += Number(kpi.thruplay||0);
+      totReach+= Number(kpi.reach||0);
+    }
+    if(ts && ts.rows){
+      ts.rows.forEach(function(r){
+        const d = r.date||'';
+        if(!aggMap[d]) aggMap[d]={imp:0,clk:0,tp:0};
+        aggMap[d].imp += Number(r.impressions||0);
+        aggMap[d].clk += Number(r.clicks||0);
+        aggMap[d].tp  += Number(r.thruplay||0);
       });
     }
-  });
+  }));
 
-  // Extrai influenciadores dos ad names usando inteligência automática
-  const rawAds=[
-    {ad:'Bil Araújo | Story 15s - BR',imp:Math.round(totImp*.18),clk:Math.round(totClk*.16),tp:Math.round(totTP*.17)},
-    {ad:'Bil Araújo | Reels 30s - Copa',imp:Math.round(totImp*.14),clk:Math.round(totClk*.12),tp:Math.round(totTP*.13)},
-    {ad:'Dani Cacella - Story 15s',imp:Math.round(totImp*.14),clk:Math.round(totClk*.13),tp:Math.round(totTP*.14)},
-    {ad:'Dani Cacella - Feed Video',imp:Math.round(totImp*.10),clk:Math.round(totClk*.09),tp:Math.round(totTP*.11)},
-    {ad:'Gabriel Cacella | TikTok Feed',imp:Math.round(totImp*.12),clk:Math.round(totClk*.13),tp:Math.round(totTP*.11)},
-    {ad:'Gabriel Cacella | Story A',imp:Math.round(totImp*.06),clk:Math.round(totClk*.07),tp:Math.round(totTP*.06)},
-    {ad:'Família Cacella - Reels Copa',imp:Math.round(totImp*.10),clk:Math.round(totClk*.11),tp:Math.round(totTP*.10)},
-    {ad:'Família Cacella - Story B',imp:Math.round(totImp*.04),clk:Math.round(totClk*.04),tp:Math.round(totTP*.04)},
-    {ad:'Léo Chile | TikTok TopView',imp:Math.round(totImp*.08),clk:Math.round(totClk*.09),tp:Math.round(totTP*.08)},
-    {ad:'Outros - V1',imp:Math.round(totImp*.04),clk:Math.round(totClk*.06),tp:Math.round(totTP*.06)},
-  ];
-  const inflData=groupByInfluencer(rawAds);
+  const avgVtr=totImp?(totTP/totImp*100):0;
+  const avgCtr=totImp?(totClk/totImp*100):0;
+  const totCost=cs.reduce((s,c)=>s+(parseFloat(c.investimento)||0),0);
+  const cliRec=totCost;
 
-  // Ad names com influenciador extraído automaticamente
-  const adData=rawAds.map(a=>({
-    ad:a.ad,
-    influencer:extractInfluencer(a.ad),
-    plt:a.ad.toLowerCase().includes('tiktok')?'tiktok':a.ad.toLowerCase().includes('dv360')?'dv360':'meta',
-    imp:a.imp,clk:a.clk,tp:a.tp,
-    vtr:a.imp?(a.tp/a.imp*100):0
-  })).sort((a,b)=>b.imp-a.imp);
+  // Gráfico — série diária real
+  const sortedDates = Object.keys(aggMap).sort();
+  const labels = sortedDates.map(function(d){ const p=d.split('-'); return p[2]+'/'+p[1]; });
+  const aggImp   = sortedDates.map(function(d){ return aggMap[d].imp; });
+  const aggClk   = sortedDates.map(function(d){ return aggMap[d].clk; });
+  const aggTP    = sortedDates.map(function(d){ return aggMap[d].tp; });
+  const aggReach = sortedDates.map(function(d){ return aggMap[d].imp; });
+
+  // Dados reais de influenciadores — carregados via API abaixo
+  const rawAds=[];
+  const inflData=[];
+  const adData=[];
 
   const metMap={
     impressions:{l:'Impressões',v:fmt(totImp),c:cor,sub:'total'},
@@ -2277,7 +2279,7 @@ async function loadInflAdmin(){
 
   // Montar allAds a partir dos dados reais do BigQuery
   const allAds = (data.rows||[]).map(function(r){
-    return {ad: r.AD_NAME||r.influenciador||'', group: r.CAMPAIGN_NAME||'', campId: campId};
+    return {ad: r.ad_name||r.AD_NAME||r.influenciador||'', group: r.campaign_name||r.CAMPAIGN_NAME||'', campId: campId};
   });
 
   const search      = (($('infl-admin-search')||{}).value||'').toLowerCase().trim();

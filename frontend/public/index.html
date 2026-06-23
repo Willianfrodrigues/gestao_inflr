@@ -844,6 +844,17 @@ s=s.replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,'');return parseFloat(s
 const MET_LBL={impressions:'Impressões',clicks:'Cliques',ctr:'CTR',thruplay:'ThruPlay',vtr:'VTR',reach:'Alcance',frequency:'Frequência',comments:'Comentários',shares:'Compartilhamentos',likes:'Curtidas',views100:'Views 100%',cost:'Investimento',cpc:'CPC',cpm_ef:'CPM Efetivo',influencers:'Ranking Influenciadores',adname:'Análise por Ad'};
 const CLK_LBL={clicks_link:'Cliques',clicks:'Cliques'};
 const PLT_LBL={meta:'Meta',tiktok:'TikTok',dv360:'DV360',both:'Todas'};
+// BigQuery platform values → frontend keys
+const BQ_PLT_MAP={'facebook ads':'meta','tiktok ads':'tiktok','tiktok for business':'tiktok','google dv360':'dv360'};
+function bqPltToKey(p){ return BQ_PLT_MAP[(p||'').toLowerCase()]||'meta'; }
+function bqPltToLabel(p){
+  const k=bqPltToKey(p);
+  return PLT_LBL[k]||p;
+}
+function bqPltClass(p){
+  const k=bqPltToKey(p);
+  return k==='tiktok'?'plt-tiktok':k==='dv360'?'plt-dv360':'plt-meta';
+}
 const PTITLES={gerencial:'Painel Gerencial','cliente-view':'Ver como Cliente','adm-clientes':'Clientes','adm-campanhas':'Campanhas','adm-admins':'Administradores','adm-influenciadores':'Influenciadores','cs-painel':'Painel Customer Success'};
 
 // ─── STATE ───
@@ -1501,13 +1512,23 @@ async function renderCliView(cid){
   
   await Promise.all(cs.map(async function(c){
     const plts=Array.isArray(c.plt)?c.plt:[c.plt||'meta'];
-    const [kpi, ts, ...pltKpis] = await Promise.all([
+    const [kpi, ts, byCamp] = await Promise.all([
       apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+start+'&end_date='+end),
       apiFetch('/api/gestao/data?type=timeseries&camp_id='+c.id+'&start_date='+start+'&end_date='+end),
-      ...plts.map(function(plt){ return apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+start+'&end_date='+end+'&platform='+plt); })
+      apiFetch('/api/gestao/data?type=by_campaign&camp_id='+c.id+'&start_date='+start+'&end_date='+end)
     ]);
+    // Build _kpiByPlt from by_campaign results using BigQuery platform names
     c._kpiByPlt = {};
-    plts.forEach(function(plt,i){ if(pltKpis[i]&&!pltKpis[i].error) c._kpiByPlt[plt]=pltKpis[i]; });
+    if(byCamp && byCamp.rows){
+      byCamp.rows.forEach(function(r){
+        const key = bqPltToKey(r.platform);
+        if(!c._kpiByPlt[key]) c._kpiByPlt[key] = {impressions:0,clicks_link:0,clicks:0,thruplay:0,comments:0,reactions:0,shares:0,views100:0};
+        c._kpiByPlt[key].impressions   += Number(r.impressions||0);
+        c._kpiByPlt[key].clicks_link   += Number(r.clicks_link||0);
+        c._kpiByPlt[key].clicks        += Number(r.clicks||0);
+        c._kpiByPlt[key].thruplay      += Number(r.thruplay||0);
+      });
+    }
     if(kpi && !kpi.error){
       c._kpi = kpi;
       totImp  += Number(kpi.impressions||0);

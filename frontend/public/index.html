@@ -735,7 +735,9 @@ async function apiFetch(path, opts={}) {
   if(AUTH.token) headers['Authorization'] = 'Bearer ' + AUTH.token;
   const res = await fetch(API + path, {...opts, headers: {...headers, ...(opts.headers||{})}});
   if(res.status === 401) { doLogout(); return null; }
-  return res.json();
+  const data = await res.json();
+  console.log('[API]', path, '->', data);
+  return data;
 }
 
 // ─── LOGIN ───
@@ -795,6 +797,19 @@ async function loadAppData() {
   }
   renderCliGrid();
   renderCampTable();
+}
+
+function getDateRange(){
+  const s = ($('ds')||{}).value || '2026-06-01';
+  const e = ($('de')||{}).value || new Date().toISOString().split('T')[0];
+  return {start: s, end: e};
+}
+
+function reloadData(){
+  const panel = document.querySelector('.panel.active');
+  const id = panel ? panel.id.replace('panel-','') : '';
+  const activeNav = document.querySelector('.nav-item.active');
+  if(id) goTo(id, activeNav);
 }
 
 // ─── HELPERS ───
@@ -1441,12 +1456,8 @@ async function renderCliView(cid){
   const corBg=`rgba(${corRgb},0.08)`;
   const corBd=`rgba(${corRgb},0.22)`;
 
-  // Buscar datas consolidadas das campanhas do cliente
-  const today = new Date().toISOString().split('T')[0];
-  const inis = cs.map(c=>c.ini).filter(Boolean).sort();
-  const fins = cs.map(c=>c.fim).filter(Boolean).sort();
-  const start = inis[0] || today;
-  const end   = fins[fins.length-1] || today;
+  // Usar filtro de data global
+  const {start, end} = getDateRange();
 
   // Buscar KPIs e timeseries reais do BigQuery para cada campanha
   let totImp=0,totClk=0,totTP=0,totReach=0;
@@ -1454,8 +1465,8 @@ async function renderCliView(cid){
   
   await Promise.all(cs.map(async function(c){
     const [kpi, ts] = await Promise.all([
-      apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+(c.ini||start)+'&end_date='+(c.fim||end)),
-      apiFetch('/api/gestao/data?type=timeseries&camp_id='+c.id+'&start_date='+(c.ini||start)+'&end_date='+(c.fim||end))
+      apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+start+'&end_date='+end),
+      apiFetch('/api/gestao/data?type=timeseries&camp_id='+c.id+'&start_date='+start+'&end_date='+end)
     ]);
     if(kpi && !kpi.error){
       totImp  += Number(kpi.impressions||0);
@@ -2271,7 +2282,10 @@ async function loadInflAdmin(){
   const start = camp.ini || new Date().toISOString().split('T')[0];
   const end   = camp.fim || new Date().toISOString().split('T')[0];
 
-  const data = await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+campId+'&start_date='+start+'&end_date='+end);
+  const {start: globalStart, end: globalEnd} = getDateRange();
+  const inflStart = camp.ini || globalStart;
+  const inflEnd   = camp.fim || globalEnd;
+  const data = await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+campId+'&start_date='+inflStart+'&end_date='+inflEnd);
   if(!data || data.error){
     tbody.innerHTML='<tr><td colspan="6"><div class="empty"><p>Erro ao carregar dados: '+(data?.error||'falha')+'</p></div></td></tr>';
     return;

@@ -775,8 +775,16 @@ function doLogout() {
   localStorage.removeItem('inflr_token');
   localStorage.removeItem('inflr_user');
   AUTH = {token: null, user: null};
+  // Reset client-mode
+  const shell = document.getElementById('app-shell');
+  shell.classList.remove('client-mode');
+  shell.style.display = 'none';
+  // Restore sidebar and nav items
+  document.querySelectorAll('.nav-item').forEach(function(el){ el.style.display = ''; });
+  document.querySelectorAll('.sb-sep').forEach(function(el){ el.style.display = ''; });
+  const topbar = document.querySelector('.topbar');
+  if(topbar) topbar.style.display = '';
   document.getElementById('login-screen').classList.remove('hidden');
-  document.getElementById('app-shell').style.display = 'none';
 }
 
 async function showApp() {

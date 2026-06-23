@@ -1486,6 +1486,7 @@ async function renderCliView(cid){
       apiFetch('/api/gestao/data?type=timeseries&camp_id='+c.id+'&start_date='+start+'&end_date='+end)
     ]);
     if(kpi && !kpi.error){
+      c._kpi = kpi;
       totImp  += Number(kpi.impressions||0);
       totClk  += Number(kpi.clicks_link||kpi.clicks||0);
       totTP   += Number(kpi.thruplay||0);
@@ -1554,7 +1555,7 @@ async function renderCliView(cid){
   <div style="background:${corBg};border-bottom:1px solid ${corBd};padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;margin:-22px -24px 22px;position:sticky;top:54px;z-index:40;">
     <div style="display:flex;align-items:center;gap:12px;">${logoHtml}</div>
     <div style="display:flex;align-items:center;gap:6px;">
-      <span style="font-size:12px;color:var(--muted2);">📅 ${start} → ${end}</span>
+      <span style="font-size:12px;color:var(--muted2);">📅 ${start.split('-').reverse().join('/')} → ${end.split('-').reverse().join('/')}</span>
     </div>
   </div>
 
@@ -1643,6 +1644,7 @@ async function renderCliView(cid){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">
       ${cs.map(c=>{
         const ci=Number((c._kpi||{}).impressions||0);const cc=Number((c._kpi||{}).clicks_link||(c._kpi||{}).clicks||0);const ct=Number((c._kpi||{}).thruplay||0);const cr=Number((c._kpi||{}).reach||0);
+        // _kpi already loaded by renderCliView above
         const pltClass=c.plt==='tiktok'?'plt-tiktok':c.plt==='dv360'?'plt-dv360':'plt-meta';
         let rows='';
         if(show.includes('impressions'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Impressões</span><span class="cmp-val">${fmt(ci)}</span></div>`;
@@ -1655,7 +1657,7 @@ async function renderCliView(cid){
         if(show.includes('likes'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Curtidas</span><span class="cmp-val" style="color:var(--pink);">${fmt(Number((c._kpi||{}).reactions||0))}</span></div>`;
         if(show.includes('shares'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Compart.</span><span class="cmp-val">${fmt(Number((c._kpi||{}).shares||0))}</span></div>`;
         if(show.includes('views100'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Views 100%</span><span class="cmp-val">${fmt(Number((c._kpi||{}).views100||0))}</span></div>`;
-        if(show.includes('cost'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Investimento</span><span class="cmp-val" style="color:var(--red);">${fmtR(Number((c._cost||{}).total_cost||0))}</span></div>`;
+        if(show.includes('cost'))rows+=`<div class="cmp-row"><span class="cmp-lbl">Investimento</span><span class="cmp-val" style="color:var(--gold);">${fmtR(c.investimento||0)}</span></div>`;
         return`<div class="cmp-card" style="border-top:3px solid ${cor};"><div class="cmp-card-top"><div><div class="cmp-card-name" style="font-size:11.5px;max-width:180px;">${c.nome}</div><div style="display:flex;gap:4px;margin-top:5px;"><span class="plt ${pltClass}">${PLT_LBL[c.plt]||c.plt}</span><span class="badge bg-gold">${CLK_LBL[c.clk]||c.clk}</span></div></div>${campStatus(c)}</div><div class="cmp-rows">${rows}</div></div>`;
       }).join('')}
     </div>

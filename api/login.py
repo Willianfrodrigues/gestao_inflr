@@ -40,3 +40,5 @@ class handler(BaseHTTPRequestHandler):
 
         except Exception as e:
             self._send(error_response(str(e), 500))
+
+app = handler

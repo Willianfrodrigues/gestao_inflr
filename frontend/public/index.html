@@ -735,7 +735,9 @@ async function apiFetch(path, opts={}) {
   if(AUTH.token) headers['Authorization'] = 'Bearer ' + AUTH.token;
   const res = await fetch(API + path, {...opts, headers: {...headers, ...(opts.headers||{})}});
   if(res.status === 401) { doLogout(); return null; }
-  return res.json();
+  const data = await res.json();
+  console.log('[API]', path.split('?')[0], path.includes('type=') ? path.match(/type=([^&]+)/)[1] : '', '->', JSON.stringify(data).slice(0,300));
+  return data;
 }
 
 // ─── LOGIN ───
@@ -920,7 +922,7 @@ document.querySelectorAll('.cb-pill:not(#cp-plts .cb-pill)').forEach(p=>{
 });
 
 // ─── SAVE CLIENT ───
-function saveCli(){
+function saveCliOLD_UNUSED(){
   const nome=$('cl-nome').value.trim();
   if(!nome){toast('Nome obrigatório.','r');return;}
   const mets=[...$('cl-mets').querySelectorAll('input:checked')].map(i=>i.value);
@@ -953,7 +955,7 @@ function editCli(id){
   document.querySelectorAll('#cl-mets .cb-pill').forEach(p=>{const i=p.querySelector('input');const on=(c.mets||[]).includes(i.value);i.checked=on;p.classList.toggle('on',on);});
   om('m-cli');
 }
-function delCli(id){if(!confirm('Remover cliente?'))return;S.clients=S.clients.filter(c=>c.id!==id);renderCliGrid();toast('Removido.','g');}
+function delCliOLD_UNUSED(id){if(!confirm('Remover cliente?'))return;S.clients=S.clients.filter(c=>c.id!==id);renderCliGrid();toast('Removido.','g');}
 
 // ─── RENDER CLIENT GRID ───
 function renderCliGrid(){
@@ -997,7 +999,7 @@ function toggleOrgField(){
 function calcInvestimento(){
   // Investimento é manual — cadastrado pelo usuário
 }
-function saveCampLocal(){
+function saveCampOLD_UNUSED(){
   const nome=$('cp-nome').value.trim(),cid=$('cp-cli').value;
   if(!nome||!cid){toast('Nome e cliente obrigatórios.','r');return;}
   const camp={id:S._ecamp||'p'+Date.now(),nome,cid,kws:[...S._ckws],ex:[...S._cex],ini:$('cp-ini').value,fim:$('cp-fim').value,clk:$('cp-clk').value,plt:[...$('cp-plts').querySelectorAll('input:checked')].map(i=>i.value),cpmCli:parseFloat($('cp-cpm-cli').value)||0,investimento:parseBR($('cp-invest-manual')?.value),orgAtivo:!!($('cp-org-ativo')?.checked),orgUrl:$('cp-org-url')?.value.trim()||'',metaImp:parseBR($('cp-meta').value),data:{imp:Array(18).fill(0),clk:Array(18).fill(0),tp:Array(18).fill(0),reach:Array(18).fill(0)}};
@@ -1008,7 +1010,7 @@ function saveCampLocal(){
   ['cp-nome','cp-ini','cp-fim','cp-cpm-cli','cp-meta','cp-org-url','cp-invest-manual'].forEach(id=>{if($(id)){$(id).value='';if($(id).dataset)$(id).dataset.manual='';}});if($('cp-org-ativo')){$('cp-org-ativo').checked=false;}if($('cp-org-wrap'))$('cp-org-wrap').style.display='none';
   $('cp-kw-tags').innerHTML='';$('cp-ex-tags').innerHTML='';
 }
-function delCamp(id){if(!confirm('Remover campanha?'))return;S.camps=S.camps.filter(c=>c.id!==id);renderCampTable();renderGerencial();toast('Removida.','g');}
+function delCampOLD_UNUSED(id){if(!confirm('Remover campanha?'))return;S.camps=S.camps.filter(c=>c.id!==id);renderCampTable();renderGerencial();toast('Removida.','g');}
 
 // ─── CAMP TABLE ───
 function filterCamp(cid,el){
@@ -2525,10 +2527,8 @@ function editCamp(id){
 
 
 // ─── SAVE CLIENT (API) ───
-const _origSaveCli = typeof saveCli !== 'undefined' ? saveCli : null;
-
-// ─── SAVE CAMP (API) ───
-async function saveCampAPI() {
+// ─── SAVE/DELETE VIA API ───
+async function saveCamp() {
   const nome = $('cp-nome').value.trim();
   const cid  = $('cp-cli').value;
   if(!nome||!cid){toast('Nome e cliente obrigatórios.','r');return;}
@@ -2554,14 +2554,14 @@ async function saveCampAPI() {
   cm('m-camp'); renderCampTable(); renderGerencial(); toast('Campanha salva!','g');
 }
 
-async function delCampAPI(id){
+async function delCamp(id){
   if(!confirm('Remover campanha?')) return;
   await apiFetch('/api/gestao/camps', {method:'DELETE', body:JSON.stringify({id})});
   S.camps = S.camps.filter(c=>c.id!==id);
   renderCampTable(); renderGerencial(); toast('Removida.','g');
 }
 
-async function saveCliAPI(){
+async function saveCli(){
   const nome = $('cl-nome').value.trim();
   if(!nome){toast('Nome obrigatório.','r');return;}
   const mets = [...$('cl-mets').querySelectorAll('input:checked')].map(i=>i.value);
@@ -2583,7 +2583,7 @@ async function saveCliAPI(){
   cm('m-cli'); renderCliGrid(); toast('Cliente salvo!','g');
 }
 
-async function delCliAPI(id){
+async function delCli(id){
   if(!confirm('Remover cliente?')) return;
   await apiFetch('/api/gestao/clients', {method:'DELETE', body:JSON.stringify({id})});
   S.clients = S.clients.filter(c=>c.id!==id);
@@ -2591,10 +2591,10 @@ async function delCliAPI(id){
 }
 
 // Override save/del functions
-window.saveCamp = saveCampAPI;
-window.delCamp  = delCampAPI;
-window.saveCli  = saveCliAPI;
-window.delCli   = delCliAPI;
+// saveCamp is now directly defined above
+// delCamp is now directly defined above
+// saveCli is now directly defined above
+// delCli is now directly defined above
 
 // ─── INIT ───
 window.addEventListener('DOMContentLoaded', function() {

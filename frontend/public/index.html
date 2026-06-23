@@ -823,6 +823,8 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 function reloadData(){
+  // Clear KPI cache so fresh data is fetched
+  S.camps.forEach(function(c){ delete c._kpi; delete c._cost; delete c._kpiRange; });
   const panel = document.querySelector('.panel.active');
   const id = panel ? panel.id.replace('panel-','') : '';
   const activeNav = document.querySelector('.nav-item.active');
@@ -1709,8 +1711,7 @@ async function loadCliInfluencers(){
   
   const allRows=[];
   await Promise.all(cs.map(async function(c){
-    const s=c.ini||start, e=c.fim||end;
-    const data=await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+c.id+'&start_date='+s+'&end_date='+e);
+    const data=await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+c.id+'&start_date='+start+'&end_date='+end);
     if(!data||data.error)return;
     (data.rows||[]).forEach(function(r){
       const imp=Number(r.impressions||0);
@@ -1799,8 +1800,7 @@ async function loadCliAdNames(){
 
   const allRows=[];
   await Promise.all(cs.map(async function(c){
-    const s=c.ini||start, e=c.fim||end;
-    const data=await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+c.id+'&start_date='+s+'&end_date='+e);
+    const data=await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+c.id+'&start_date='+start+'&end_date='+end);
     if(!data||data.error)return;
     (data.rows||[]).forEach(function(r){
       const imp=Number(r.impressions||0);

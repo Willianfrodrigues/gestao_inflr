@@ -774,13 +774,42 @@ function doLogout() {
 async function showApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-shell').style.display = '';
+
   // Update user display
   const uname = document.getElementById('sb-username');
   const urole = document.getElementById('sb-userrole');
   if(uname) uname.textContent = AUTH.user?.nome || AUTH.user?.username || 'Admin';
-  if(urole) urole.textContent = AUTH.user?.role === 'admin' ? 'INFLR' : (AUTH.user?.role||'').toUpperCase();
+  if(urole) urole.textContent = AUTH.user?.role === 'admin' ? 'INFLR' : 'CLIENT';
+
   // Load data from API
   await loadAppData();
+
+  // Cliente: vai direto para Ver como Cliente e oculta menu admin
+  if(AUTH.user?.role === 'client') {
+    // Ocultar itens de menu que cliente não deve ver
+    document.querySelectorAll('.nav-item').forEach(function(el){
+      const txt = el.textContent.trim();
+      const allowed = ['Ver como Cliente'];
+      if(!allowed.some(function(a){ return txt.includes(a); })){
+        el.style.display = 'none';
+      }
+    });
+    document.querySelectorAll('.sb-sep').forEach(function(el){ el.style.display = 'none'; });
+    // Ir direto para Ver como Cliente e pré-selecionar o cliente
+    goTo('cliente-view', document.querySelector('.nav-item[style=""]') || document.querySelector('.nav-item'));
+    // Auto-selecionar o cliente correspondente
+    setTimeout(function(){
+      const sel = document.getElementById('cv-sel');
+      if(sel && S.clients.length){
+        // Encontrar cliente pelo username
+        const cli = S.clients.find(function(c){ return c.user === AUTH.user?.username; });
+        if(cli){ sel.value = cli.id; renderCliView(cli.id); }
+        else if(S.clients.length === 1){ sel.value = S.clients[0].id; renderCliView(S.clients[0].id); }
+      }
+    }, 500);
+    return;
+  }
+
   goTo('gerencial', document.querySelector('.nav-item'));
 }
 

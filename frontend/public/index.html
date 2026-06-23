@@ -1020,7 +1020,7 @@ function renderCampTable(){
       <td><span class="badge bg-gold">${CLK_LBL[c.clk]||c.clk}</span></td>
       <td>${pltBadges}</td>
       <td style="color:var(--gold);font-weight:600;">${c.cpmCli?'R$ '+c.cpmCli.toFixed(2):'—'}</td>
-      <td style="color:var(--green);font-weight:700;">${c.cpmCli&&c.metaImp?fmtR(c.metaImp/1000*c.cpmCli):'—'}</td>
+      <td style="color:var(--green);font-weight:700;">${c.investimento?fmtR(c.investimento):'—'}</td>
       <td>${campStatus(c)}</td>
       <td style="display:flex;gap:4px;"><button class="btn btn-ghost btn-xs" onclick="editCamp('${c.id}')">✏️</button><button class="btn btn-danger btn-xs" onclick="delCamp('${c.id}')">🗑</button></td>
     </tr>`;

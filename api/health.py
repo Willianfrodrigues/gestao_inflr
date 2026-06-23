@@ -17,3 +17,5 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self._send(json_response({"status": "ok", "service": "inflr-gestao"}))
+
+app = handler

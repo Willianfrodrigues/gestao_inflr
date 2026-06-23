@@ -805,6 +805,23 @@ function getDateRange(){
   return {start: s, end: e};
 }
 
+function fmtDate(iso){ return iso ? iso.split('-').reverse().join('/') : ''; }
+
+function updateCliDateDisplay(){
+  const el = $('cli-date-display');
+  if(!el) return;
+  const {start, end} = getDateRange();
+  el.textContent = '📅 ' + fmtDate(start) + ' → ' + fmtDate(end);
+}
+
+// Hook date inputs to update client view header live
+document.addEventListener('DOMContentLoaded', function(){
+  ['ds','de'].forEach(function(id){
+    const el = $(id);
+    if(el) el.addEventListener('change', updateCliDateDisplay);
+  });
+});
+
 function reloadData(){
   const panel = document.querySelector('.panel.active');
   const id = panel ? panel.id.replace('panel-','') : '';
@@ -1551,11 +1568,12 @@ async function renderCliView(cid){
   const pColors=['#C0C0C0',cor,'#CD7F32'];
   const pHeights=['120px','145px','100px'];
 
+  updateCliDateDisplay();
   $('cv-content').innerHTML=`
   <div style="background:${corBg};border-bottom:1px solid ${corBd};padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;margin:-22px -24px 22px;position:sticky;top:54px;z-index:40;">
     <div style="display:flex;align-items:center;gap:12px;">${logoHtml}</div>
     <div style="display:flex;align-items:center;gap:6px;">
-      <span style="font-size:12px;color:var(--muted2);">📅 ${start.split('-').reverse().join('/')} → ${end.split('-').reverse().join('/')}</span>
+      <span id="cli-date-display" style="font-size:12px;color:var(--muted2);"></span>
     </div>
   </div>
 

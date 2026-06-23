@@ -38,7 +38,6 @@ class handler(BaseHTTPRequestHandler):
             end     = params.get("end_date",   [""])[0]
             type_   = params.get("type",       ["kpi"])[0]
             camp_id = params.get("camp_id",    [""])[0]
-            plt     = params.get("platform",   [""])[0]
 
             if not start or not end:
                 return self._send(error_response("start_date e end_date obrigatórios."))
@@ -53,12 +52,11 @@ class handler(BaseHTTPRequestHandler):
                     kws, ex = list(row[0] or []), list(row[1] or [])
 
             f = build_camp_filter(kws, ex)
-
-            # Add platform filter if specified
-            if plt:
-                plt_map = {'meta': 'Meta', 'tiktok': 'TikTok', 'dv360': 'Google DV360'}
-                plt_val = plt_map.get(plt.lower(), plt)
-                f = f + f" AND LOWER(platform) = '{plt_val.lower()}'"
+        # Add platform filter if specified
+        if plt:
+            plt_map = {'meta':'Meta','tiktok':'TikTok','dv360':'Google DV360'}
+            plt_val = plt_map.get(plt.lower(), plt)
+            f = f + f" AND LOWER(platform) = '{plt_val.lower()}'"
 
             if type_ == "kpi":
                 q = f"""

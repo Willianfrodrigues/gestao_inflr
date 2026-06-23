@@ -24,8 +24,23 @@ class handler(BaseHTTPRequestHandler):
             password = (body.get("password") or "").strip()
 
             conn = get_db(); cur = conn.cursor()
+
+            # 1. Tentar login como admin (gestao_users)
             cur.execute(
                 "SELECT id, username, nome, role, perms FROM gestao_users WHERE username=%s AND password=%s",
+                (username, password)
+            )
+            row = cur.fetchone()
+
+            if row:
+                user  = {"id": row[0], "username": row[1], "nome": row[2], "role": row[3], "perms": list(row[4] or [])}
+                token = make_token(user)
+                cur.close(); conn.close()
+                return self._send(json_response({**user, "token": token}))
+
+            # 2. Tentar login como cliente (gestao_clients)
+            cur.execute(
+                "SELECT id, username, nome, cor FROM gestao_clients WHERE username=%s AND password=%s",
                 (username, password)
             )
             row = cur.fetchone()
@@ -34,7 +49,14 @@ class handler(BaseHTTPRequestHandler):
             if not row:
                 return self._send(error_response("Usuário ou senha incorretos.", 401))
 
-            user  = {"id": row[0], "username": row[1], "nome": row[2], "role": row[3], "perms": list(row[4] or [])}
+            user = {
+                "id":       row[0],
+                "username": row[1],
+                "nome":     row[2],
+                "role":     "client",
+                "cor":      row[3],
+                "perms":    ["cliente-view"]
+            }
             token = make_token(user)
             self._send(json_response({**user, "token": token}))
 

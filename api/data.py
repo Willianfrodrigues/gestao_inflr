@@ -16,6 +16,13 @@ def bq_rows(query):
         result.append(row)
     return result
 
+# Mapeamento frontend → BigQuery
+PLT_BQ_MAP = {
+    'meta':    'facebook ads',
+    'tiktok':  'tiktok ads',
+    'dv360':   'google dv360',
+}
+
 class handler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
@@ -55,8 +62,7 @@ class handler(BaseHTTPRequestHandler):
             f = build_camp_filter(kws, ex)
 
             if plt:
-                plt_map = {'meta': 'meta', 'tiktok': 'tiktok', 'dv360': 'google dv360'}
-                plt_val = plt_map.get(plt.lower(), plt.lower())
+                plt_val = PLT_BQ_MAP.get(plt.lower(), plt.lower())
                 f = f + f" AND LOWER(TRIM(platform)) = '{plt_val}'"
 
             if type_ == "kpi":

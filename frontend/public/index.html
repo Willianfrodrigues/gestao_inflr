@@ -1618,11 +1618,13 @@ async function renderCliView(cid){
           cs.forEach(function(c){
             const plts=Array.isArray(c.plt)?c.plt:[c.plt||'meta'];
             plts.forEach(function(plt){
-              const pltKpi=(c._kpiByPlt||{})[plt]||(plts.length===1?c._kpi:null)||{};
+              const pltKpi=(c._kpiByPlt||{})[plt]||c._kpi||{};
               const ci=Number(pltKpi.impressions||0);
               const cc=Number(pltKpi.clicks_link||pltKpi.clicks||0);
               const ct=Number(pltKpi.thruplay||0);
-              if(!ci) return; // ocultar plataforma sem dados
+              const hasPltData = Object.keys(c._kpiByPlt||{}).length > 0;
+              if(hasPltData && !ci) return; // ocultar plataforma sem dados reais
+              if(!hasPltData && plts.indexOf(plt) > 0) return; // sem dados por plt: mostrar só primeira
               const ipct=(ci/mImp*100).toFixed(1);
               const pltClass=plt==='tiktok'?'plt-tiktok':plt==='dv360'?'plt-dv360':'plt-meta';
               rows.push('<tr>'

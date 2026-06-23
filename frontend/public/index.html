@@ -877,8 +877,8 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 function reloadData(){
-  // Clear KPI cache so fresh data is fetched
-  S.camps.forEach(function(c){ delete c._kpi; delete c._cost; delete c._kpiRange; });
+  // Clear KPI cache so fresh data is fetched (keep _kpiTotal - uses campaign dates, not filter)
+  S.camps.forEach(function(c){ delete c._kpi; delete c._cost; delete c._kpiRange; delete c._kpiByPlt; delete c._byCamp; });
   const panel = document.querySelector('.panel.active');
   const id = panel ? panel.id.replace('panel-','') : '';
   const activeNav = document.querySelector('.nav-item.active');
@@ -2281,11 +2281,16 @@ function toggleCsPerms(role){
 
 async function renderCSPainel(){
   // Buscar KPIs com período COMPLETO de cada campanha (para pace correto)
+  // Sempre usa c.ini e c.fim — independente do filtro global
   await Promise.all(S.camps.map(async function(c){
-    if(c._kpiTotal) return; // já carregado
+    const cacheKey = c.id + '_' + c.ini + '_' + c.fim;
+    if(c._kpiTotalKey === cacheKey) return; // cache válido
     if(!c.ini || !c.fim) return;
-    const data = await apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+c.ini+'&end_date='+c.fim);
+    const today = new Date().toISOString().split('T')[0];
+    const endDate = c.fim < today ? c.fim : today; // não buscar futuro
+    const data = await apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+c.ini+'&end_date='+endDate);
     c._kpiTotal = data && !data.error ? data : {};
+    c._kpiTotalKey = cacheKey;
   }));
   await renderGerencial(); // garante _kpi do filtro global carregado
   // Popular filtros

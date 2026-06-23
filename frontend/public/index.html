@@ -51,9 +51,11 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#EAF8F5 0%
 
 /* ── CLIENT MODE ─── */
 #app-shell.client-mode .topbar { display: none !important; }
-#app-shell.client-mode #panel-cliente-view > div:first-child { display: none !important; }
 #app-shell.client-mode #cv-sel { display: none !important; }
+#app-shell.client-mode #cv-admin-header { display: none !important; }
+#app-shell.client-mode #panel-cliente-view > div:first-child { flex-direction: column; }
 #app-shell.client-mode .content { padding-top: 16px; }
+#app-shell.client-mode .sb-tagline { display: none; }
 
 /* ── LOGIN SCREEN ─── */
 #login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#081E1A 0%,#0F2B26 60%,#0A2420 100%);display:flex;align-items:center;justify-content:center;z-index:9999;}
@@ -520,7 +522,7 @@ tbody td{padding:10px 13px;font-size:12.5px;}
       <!-- ── VER COMO CLIENTE ── -->
       <div class="panel" id="panel-cliente-view">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-          <div class="page-hd" style="margin-bottom:0;flex:1;">
+          <div class="page-hd" style="margin-bottom:0;flex:1;" id="cv-admin-header">
             <div class="page-title">Ver como Cliente</div>
             <div class="page-sub">Visualize exatamente o que cada cliente enxerga.</div>
           </div>

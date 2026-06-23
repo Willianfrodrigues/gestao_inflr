@@ -148,9 +148,9 @@ tbody td{padding:10px 13px;font-size:12.5px;}
 
 /* ── PLATFORM ─── */
 .plt{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;}
-.plt-meta{background:rgba(59,91,219,.15);color:#7B9BFF;}
-.plt-tiktok{background:rgba(255,255,255,.07);color:var(--text);}
-.plt-dv360{background:rgba(66,133,244,.15);color:#6BA4FF;}
+.plt-meta{background:rgba(24,119,242,.15);color:#1877F2;}
+.plt-tiktok{background:rgba(0,0,0,.08);color:#333;border:1px solid rgba(0,0,0,.12);}
+.plt-dv360{background:rgba(66,133,244,.15);color:#4285F4;}
 .plt-both{background:var(--purple-bg);color:var(--purple);}
 
 /* ── FORMS ─── */
@@ -1085,12 +1085,12 @@ async function renderGerencial(){
     const cs=campsOf(cli.id);
     const imp=cs.reduce((s,c)=>s+campImp(c),0);
     const custo=cs.reduce((s,c)=>s+campCost(c),0);
-    const rec=cs.reduce((s,c)=>s+(c.investimento||0),0);
+    const rec=cs.reduce((s,c)=>s+campImp(c)/1000*(c.cpmCli||0),0);
     const mg=rec-custo;
     const pct=rec>0?(mg/rec*100):0;
     return{cli,imp,custo,rec,mg,pct,cs};
   });
-  const totRec=rows.reduce((s,r)=>s+r.rec,0);
+  const totRec=rows.reduce((s,r)=>s+r.rec,0); // impressões × CPM cliente
   const totCusto=rows.reduce((s,r)=>s+r.custo,0);
   const totMg=totRec-totCusto;
   const totImp=rows.reduce((s,r)=>s+r.imp,0);
@@ -1136,7 +1136,7 @@ async function renderGerencial(){
           {l:'Cliques',v:fmt(totClk),c:'color:var(--green);'},
           {l:'CTR',v:fmtP(ctr),c:'color:var(--pink);'},
           {l:'Custo Real',v:fmtR(r.custo),c:'color:var(--red);'},
-          {l:'Invest. Contratado',v:r.cs.reduce((s,c)=>s+(c.investimento||0),0)>0?fmtR(r.cs.reduce((s,c)=>s+(c.investimento||0),0)):'—',c:'color:var(--gold);'},
+          {l:'Invest. Contratado',v:r.cs.reduce((s,c)=>s+(c.investimento||0),0)>0?fmtR(r.cs.reduce((s,c)=>s+(c.investimento||0),0)):'—',c:'color:var(--gold);font-weight:700;'},
           {l:'Margem Bruta',v:fmtR(r.mg),c:r.mg>=0?'color:var(--green);font-weight:700;':'color:var(--red);font-weight:700;'},
         ].map(k=>'<div style="background:var(--surface2);border-radius:6px;padding:6px 8px;">'
           +'<div style="font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">'+k.l+'</div>'
@@ -1160,7 +1160,7 @@ async function renderGerencial(){
       <td>${pltBadges}</td>
       <td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:${ipct}%;background:${cli?.cor||'var(--gold)'}"></div></div><span class="bar-v">${fmt(imp)}</span></div></td>
       <td style="color:var(--red);font-weight:600;">${fmtR(custo)}</td>
-      <td style="color:var(--green);font-weight:700;">${fmtR(rec)}</td>
+      <td style="color:var(--gold);font-weight:700;">${c.investimento?fmtR(c.investimento):'—'}</td>
       <td>${campStatus(c)}</td>
     </tr>`;
   }).join('');
@@ -1500,10 +1500,14 @@ async function renderCliView(cid){
   const aggMap={};
   
   await Promise.all(cs.map(async function(c){
-    const [kpi, ts] = await Promise.all([
+    const plts=Array.isArray(c.plt)?c.plt:[c.plt||'meta'];
+    const [kpi, ts, ...pltKpis] = await Promise.all([
       apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+start+'&end_date='+end),
-      apiFetch('/api/gestao/data?type=timeseries&camp_id='+c.id+'&start_date='+start+'&end_date='+end)
+      apiFetch('/api/gestao/data?type=timeseries&camp_id='+c.id+'&start_date='+start+'&end_date='+end),
+      ...plts.map(function(plt){ return apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+start+'&end_date='+end+'&platform='+plt); })
     ]);
+    c._kpiByPlt = {};
+    plts.forEach(function(plt,i){ if(pltKpis[i]&&!pltKpis[i].error) c._kpiByPlt[plt]=pltKpis[i]; });
     if(kpi && !kpi.error){
       c._kpi = kpi;
       totImp  += Number(kpi.impressions||0);
@@ -1613,13 +1617,12 @@ async function renderCliView(cid){
           const rows=[];
           cs.forEach(function(c){
             const plts=Array.isArray(c.plt)?c.plt:[c.plt||'meta'];
-            // One row per platform
             plts.forEach(function(plt){
-              const ci=Number((c._kpi||{}).impressions||0);
-              const cc=Number((c._kpi||{}).clicks_link||(c._kpi||{}).clicks||0);
-              const ct=Number((c._kpi||{}).thruplay||0);
-              const cr=Number((c._kpi||{}).reach||0);
-              if(!ci && plts.length>1) return; // skip zero-imp rows when multiple platforms
+              const pltKpi=(c._kpiByPlt||{})[plt]||(plts.length===1?c._kpi:null)||{};
+              const ci=Number(pltKpi.impressions||0);
+              const cc=Number(pltKpi.clicks_link||pltKpi.clicks||0);
+              const ct=Number(pltKpi.thruplay||0);
+              if(!ci) return; // ocultar plataforma sem dados
               const ipct=(ci/mImp*100).toFixed(1);
               const pltClass=plt==='tiktok'?'plt-tiktok':plt==='dv360'?'plt-dv360':'plt-meta';
               rows.push('<tr>'
@@ -1630,11 +1633,10 @@ async function renderCliView(cid){
                 +(show.includes('ctr')?'<td style="color:var(--pink);">'+fmtP(ci?(cc/ci*100):0)+'</td>':'')
                 +(show.includes('thruplay')?'<td>'+fmt(ct)+'</td>':'')
                 +(show.includes('vtr')?'<td style="color:var(--purple);font-weight:600;">'+fmtP(ci?(ct/ci*100):0)+'</td>':'')
-                
-                +(show.includes('comments')?'<td>'+fmt(Number((c._kpi||{}).comments||0))+'</td>':'')
-                +(show.includes('likes')?'<td style="color:var(--pink);">'+fmt(Number((c._kpi||{}).reactions||0))+'</td>':'')
-                +(show.includes('shares')?'<td>'+fmt(Number((c._kpi||{}).shares||0))+'</td>':'')
-                +(show.includes('views100')?'<td>'+fmt(Number((c._kpi||{}).views100||0))+'</td>':'')
+                +(show.includes('comments')?'<td>'+fmt(Number(pltKpi.comments||0))+'</td>':'')
+                +(show.includes('likes')?'<td style="color:var(--pink);">'+fmt(Number(pltKpi.reactions||0))+'</td>':'')
+                +(show.includes('shares')?'<td>'+fmt(Number(pltKpi.shares||0))+'</td>':'')
+                +(show.includes('views100')?'<td>'+fmt(Number(pltKpi.views100||0))+'</td>':'')
                 +'<td>'+campStatus(c)+'</td></tr>');
             });
           });

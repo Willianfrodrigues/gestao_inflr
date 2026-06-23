@@ -49,6 +49,12 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#EAF8F5 0%
 .nav-ico{font-size:15px;min-width:20px;text-align:center;}
 .sb-foot{padding:14px 16px;border-top:1px solid rgba(45,217,192,.12);}
 
+/* ── CLIENT MODE ─── */
+#app-shell.client-mode .topbar { display: none !important; }
+#app-shell.client-mode #panel-cliente-view > div:first-child { display: none !important; }
+#app-shell.client-mode #cv-sel { display: none !important; }
+#app-shell.client-mode .content { padding-top: 16px; }
+
 /* ── LOGIN SCREEN ─── */
 #login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#081E1A 0%,#0F2B26 60%,#0A2420 100%);display:flex;align-items:center;justify-content:center;z-index:9999;}
 #login-screen.hidden{display:none;}
@@ -786,22 +792,23 @@ async function showApp() {
 
   // Cliente: vai direto para Ver como Cliente e oculta menu admin
   if(AUTH.user?.role === 'client') {
-    // Ocultar itens de menu que cliente não deve ver
+    // Ocultar sidebar items
     document.querySelectorAll('.nav-item').forEach(function(el){
       const txt = el.textContent.trim();
-      const allowed = ['Ver como Cliente'];
-      if(!allowed.some(function(a){ return txt.includes(a); })){
-        el.style.display = 'none';
-      }
+      if(!txt.includes('Ver como Cliente')) el.style.display = 'none';
     });
     document.querySelectorAll('.sb-sep').forEach(function(el){ el.style.display = 'none'; });
-    // Ir direto para Ver como Cliente e pré-selecionar o cliente
-    goTo('cliente-view', document.querySelector('.nav-item[style=""]') || document.querySelector('.nav-item'));
+    // Ocultar topbar (filtro de data e botão atualizar não faz sentido para cliente)
+    const topbar = document.querySelector('.topbar');
+    if(topbar) topbar.style.display = 'none';
+    // Ocultar header "Ver como Cliente" + select
+    document.getElementById('app-shell').classList.add('client-mode');
+    // Ir direto para Ver como Cliente
+    goTo('cliente-view', document.querySelector('.nav-item'));
     // Auto-selecionar o cliente correspondente
     setTimeout(function(){
       const sel = document.getElementById('cv-sel');
       if(sel && S.clients.length){
-        // Encontrar cliente pelo username
         const cli = S.clients.find(function(c){ return c.user === AUTH.user?.username; });
         if(cli){ sel.value = cli.id; renderCliView(cli.id); }
         else if(S.clients.length === 1){ sel.value = S.clients[0].id; renderCliView(S.clients[0].id); }
@@ -829,6 +836,9 @@ async function loadAppData() {
 }
 
 function getDateRange(){
+  // In client mode, use the client-specific date inputs if available
+  const cliDs = $('cli-ds'), cliDe = $('cli-de');
+  if(cliDs && cliDs.value) return {start: cliDs.value, end: (cliDe&&cliDe.value)||cliDs.value};
   const s = ($('ds')||{}).value || '2026-06-01';
   const e = ($('de')||{}).value || new Date().toISOString().split('T')[0];
   return {start: s, end: e};
@@ -858,6 +868,18 @@ function reloadData(){
   const id = panel ? panel.id.replace('panel-','') : '';
   const activeNav = document.querySelector('.nav-item.active');
   if(id) goTo(id, activeNav);
+}
+
+function reloadCliView(){
+  // Sync cli-ds/cli-de back to global ds/de for API calls
+  const cliDs = $('cli-ds'), cliDe = $('cli-de');
+  const ds = $('ds'), de = $('de');
+  if(cliDs && ds) ds.value = cliDs.value;
+  if(cliDe && de) de.value = cliDe.value;
+  // Clear cache and reload
+  S.camps.forEach(function(c){ delete c._kpi; delete c._cost; delete c._kpiRange; });
+  const sel = $('cv-sel');
+  if(sel && sel.value) renderCliView(sel.value);
 }
 
 // ─── HELPERS ───
@@ -1634,8 +1656,12 @@ async function renderCliView(cid){
   $('cv-content').innerHTML=`
   <div style="background:${corBg};border-bottom:1px solid ${corBd};padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;margin:-22px -24px 22px;position:sticky;top:54px;z-index:40;">
     <div style="display:flex;align-items:center;gap:12px;">${logoHtml}</div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <span id="cli-date-display" style="font-size:12px;color:var(--muted2);"></span>
+    <div style="display:flex;align-items:center;gap:6px;" id="cli-date-controls">
+      <div class="date-box" style="border-color:${corBd};">📅
+        <input type="date" id="cli-ds" value="${start}" onchange="reloadCliView()">
+        → <input type="date" id="cli-de" value="${end}" onchange="reloadCliView()">
+      </div>
+      <button class="btn btn-sm" style="background:${cor};color:#071410;font-weight:700;" onclick="reloadCliView()">↻ Atualizar</button>
     </div>
   </div>
 

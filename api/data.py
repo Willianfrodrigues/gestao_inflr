@@ -149,3 +149,5 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             tb = traceback.format_exc()
             self._send(error_response(f"ERRO: {str(e)} | TRACEBACK: {tb}", 500))
+
+app = handler

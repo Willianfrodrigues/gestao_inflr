@@ -2280,7 +2280,14 @@ function toggleCsPerms(role){
 }
 
 async function renderCSPainel(){
-  await renderGerencial(); // garante _kpi carregado
+  // Buscar KPIs com período COMPLETO de cada campanha (para pace correto)
+  await Promise.all(S.camps.map(async function(c){
+    if(c._kpiTotal) return; // já carregado
+    if(!c.ini || !c.fim) return;
+    const data = await apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+c.ini+'&end_date='+c.fim);
+    c._kpiTotal = data && !data.error ? data : {};
+  }));
+  await renderGerencial(); // garante _kpi do filtro global carregado
   // Popular filtros
   const campSel = $('cs-camp-filter');
   const cliSel = $('cs-cli-filter');
@@ -2332,17 +2339,22 @@ async function renderCSPainel(){
       const t = new Date().toISOString().split('T')[0];
       const ativas2 = cs.filter(function(c){return c.ini<=t&&c.fim>=t;});
 
-      // Calcular pace por campanha
+      // Calcular pace por campanha — sempre usa período real da campanha, não filtro global
       var pace = 0;
       var metaDiaria = 0, mediaDiaria = 0;
-      var t2 = new Date().toISOString().split('T')[0];
+      var hoje = new Date().toISOString().split('T')[0];
       cs.forEach(function(c){
         if(!c.ini||!c.fim||!c.metaImp) return;
-        var ini = new Date(c.ini), fim = new Date(c.fim), hoje = new Date(t2);
+        var ini = new Date(c.ini), fim = new Date(c.fim), hj = new Date(hoje);
         var diasTotais = Math.max(1, Math.round((fim-ini)/(1000*60*60*24)));
-        var diasDecorridos = Math.max(1, Math.round((hoje-ini)/(1000*60*60*24)));
+        var diasDecorridos = Math.max(1, Math.min(
+          Math.round((hj-ini)/(1000*60*60*24)),
+          diasTotais
+        ));
         var metaDia = c.metaImp / diasTotais;
-        var mediaDia = Number((c._kpi||{}).impressions||0) / diasDecorridos;
+        // Usar _kpiTotal (período completo da campanha) para o pace
+        var impTotal = Number((c._kpiTotal||c._kpi||{}).impressions||0);
+        var mediaDia = impTotal / diasDecorridos;
         metaDiaria += metaDia;
         mediaDiaria += mediaDia;
       });
@@ -2434,39 +2446,47 @@ async function renderCSInflTable(){
     return true;
   });
 
-  const rows = [];
+  // Buscar e agrupar por influenciador (evitar duplicatas)
+  const inflMap = {};
   await Promise.all(campsToLoad.map(async function(camp){
     const cli = cliById(camp.cid);
-    const s = camp.ini||start, e = camp.fim||end;
-    const data = await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+camp.id+'&start_date='+s+'&end_date='+e);
+    const data = await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+camp.id+'&start_date='+start+'&end_date='+end);
     if(!data||data.error) return;
     (data.rows||[]).forEach(function(r){
       const imp = Number(r.impressions||0);
       if(!imp) return;
       const clk = Number(r.clicks_link||r.clicks||0);
       const tp  = Number(r.thruplay||0);
-      const ctr = imp?(clk/imp*100):0;
-      const vtr = imp?(tp/imp*100):0;
-      const cost= Number((camp._cost||{}).total_cost||0);
-      const cpm = imp>0?(cost/imp*1000):0;
-      const name = r.influenciador||r.ad_name||'Sem nome';
-      rows.push({name, camp:camp.nome, campId:camp.id, cli:cli?.nome||'—',
-        imp, clk, tp, ctr, vtr, cost, cpm});
+      const name = (r.influenciador||r.ad_name||'Sem nome').trim();
+      // Agrupar por nome+cliente para somar campanhas diferentes
+      const key = name + '|' + (cli?.nome||'');
+      if(!inflMap[key]){
+        inflMap[key] = {name, camp:camp.nome, campId:camp.id, cli:cli?.nome||'—', imp:0, clk:0, tp:0, camps:[]};
+      }
+      inflMap[key].imp += imp;
+      inflMap[key].clk += clk;
+      inflMap[key].tp  += tp;
+      if(!inflMap[key].camps.includes(camp.nome)) inflMap[key].camps.push(camp.nome);
     });
   }));
+
+  // Calcular métricas agregadas
+  const rows = Object.values(inflMap).map(function(r){
+    const ctr = r.imp?(r.clk/r.imp*100):0;
+    const vtr = r.imp?(r.tp/r.imp*100):0;
+    return {...r, ctr, vtr, camp: r.camps.join(', ')};
+  });
 
   // Filtrar e ordenar
   let filtered = rows.filter(function(r){
     if(!r.imp) return false;
     if(!search) return true;
-    return r.name.toLowerCase().includes(search)||r.camp.toLowerCase().includes(search);
+    return r.name.toLowerCase().includes(search)||r.camp.toLowerCase().includes(search)||r.cli.toLowerCase().includes(search);
   });
   filtered.sort(function(a,b){
     if(sort==='ctr') return b.ctr-a.ctr;
     if(sort==='vtr') return b.vtr-a.vtr;
     if(sort==='thruplay') return b.tp-a.tp;
-    if(sort==='cost') return b.cost-a.cost;
-    if(sort==='cpm') return b.cpm-a.cpm;
     return b.imp-a.imp;
   });
 
@@ -2534,7 +2554,7 @@ function renderCSCliTable(){
         var ini2=new Date(c2.ini),fim2=new Date(c2.fim),hj=new Date(tNow);
         var dt=Math.max(1,Math.round((fim2-ini2)/(1000*60*60*24)));
         var dd=Math.max(1,Math.round((hj-ini2)/(1000*60*60*24)));
-        csMD+=c2.metaImp/dt; csRD+=Number((c2._kpi||{}).impressions||0)/dd;
+        csMD+=c2.metaImp/dt; csRD+=Number((c2._kpiTotal||c2._kpi||{}).impressions||0)/dd;
       });
       csPace = csMD>0?(csRD/csMD*100):0;
       var paceCol = csPace>=100?'var(--green)':csPace>=80?'var(--gold)':'var(--red)';

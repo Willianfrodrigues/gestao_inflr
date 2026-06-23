@@ -425,8 +425,8 @@ tbody td{padding:10px 13px;font-size:12.5px;}
     </div>
     <div class="fg3">
       <div class="field"><label>CPM cobrado ao cliente (R$)</label><input type="number" id="cp-cpm-cli" placeholder="35.00" step="0.01"></div>
-      <div class="field"><label>Meta de impressões</label><input type="number" id="cp-meta" placeholder="1000000"></div>
-      <div class="field"><label>Investimento contratado (R$)</label><input type="number" id="cp-invest-manual" placeholder="ex: 400000" step="100"><div class="field-hint">Valor total do contrato com o cliente.</div></div>
+      <div class="field"><label>Meta de impressões</label><input type="text" id="cp-meta" placeholder="ex: 2.102.660"></div>
+      <div class="field"><label>Investimento contratado (R$)</label><input type="text" id="cp-invest-manual" placeholder="ex: 1.160.136"><div class="field-hint">Valor total do contrato com o cliente.</div></div>
     </div>
     <div class="field" style="margin-top:4px;padding:14px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border);">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
@@ -804,6 +804,8 @@ function fmt(n){if(n==null||isNaN(n))return'—';if(n>=1e6)return(n/1e6).toFixed
 function fmtR(n){if(n==null||isNaN(n))return'—';return'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});}
 function fmtP(n,d=2){return(n==null||isNaN(n))?'—':Number(n).toFixed(d)+'%';}
 function fmtPct(n){return(n==null||isNaN(n))?'—':Number(n).toFixed(1)+'%';}
+function parseBR(s){if(!s)return 0;s=String(s).trim();if(s.endsWith('m')||s.endsWith('M'))return parseFloat(s)*1000000;if(s.endsWith('k')||s.endsWith('K'))return parseFloat(s)*1000;// Remove pontos de milhar e troca vírgula decimal
+s=s.replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,'');return parseFloat(s)||0;}
 
 const MET_LBL={impressions:'Impressões',clicks:'Cliques',ctr:'CTR',thruplay:'ThruPlay',vtr:'VTR',reach:'Alcance',frequency:'Frequência',comments:'Comentários',shares:'Compartilhamentos',likes:'Curtidas',views100:'Views 100%',cost:'Investimento',cpc:'CPC',cpm_ef:'CPM Efetivo',influencers:'Ranking Influenciadores',adname:'Análise por Ad'};
 const CLK_LBL={clicks_link:'Cliques',clicks:'Cliques'};
@@ -985,7 +987,7 @@ function calcInvestimento(){
 function saveCamp(){
   const nome=$('cp-nome').value.trim(),cid=$('cp-cli').value;
   if(!nome||!cid){toast('Nome e cliente obrigatórios.','r');return;}
-  const camp={id:S._ecamp||'p'+Date.now(),nome,cid,kws:[...S._ckws],ex:[...S._cex],ini:$('cp-ini').value,fim:$('cp-fim').value,clk:$('cp-clk').value,plt:[...$('cp-plts').querySelectorAll('input:checked')].map(i=>i.value),cpmCli:parseFloat($('cp-cpm-cli').value)||0,investimento:parseFloat($('cp-invest-manual')?.value)||0,orgAtivo:!!($('cp-org-ativo')?.checked),orgUrl:$('cp-org-url')?.value.trim()||'',metaImp:parseFloat($('cp-meta').value)||0,data:{imp:Array(18).fill(0),clk:Array(18).fill(0),tp:Array(18).fill(0),reach:Array(18).fill(0)}};
+  const camp={id:S._ecamp||'p'+Date.now(),nome,cid,kws:[...S._ckws],ex:[...S._cex],ini:$('cp-ini').value,fim:$('cp-fim').value,clk:$('cp-clk').value,plt:[...$('cp-plts').querySelectorAll('input:checked')].map(i=>i.value),cpmCli:parseFloat($('cp-cpm-cli').value)||0,investimento:parseBR($('cp-invest-manual')?.value),orgAtivo:!!($('cp-org-ativo')?.checked),orgUrl:$('cp-org-url')?.value.trim()||'',metaImp:parseBR($('cp-meta').value),data:{imp:Array(18).fill(0),clk:Array(18).fill(0),tp:Array(18).fill(0),reach:Array(18).fill(0)}};
   const idx=S.camps.findIndex(x=>x.id===camp.id);
   if(idx>=0)S.camps[idx]={...S.camps[idx],...camp};else S.camps.push(camp);
   cm('m-camp');renderCampTable();renderGerencial();toast('Campanha salva!','g');
@@ -2474,8 +2476,8 @@ function editCamp(id){
     i.closest('.cb-pill').classList.toggle('on',plts.includes(i.value));
   });
   if($('cp-cpm-cli'))$('cp-cpm-cli').value=c.cpmCli||'';
-  if($('cp-invest-manual')){$('cp-invest-manual').value=c.investimento||'';$('cp-invest-manual').dataset.manual=c.investimento?'1':'';}
-  if($('cp-meta'))$('cp-meta').value=c.metaImp||'';
+  if($('cp-invest-manual')){$('cp-invest-manual').value=c.investimento?Number(c.investimento).toLocaleString('pt-BR'):'';$('cp-invest-manual').dataset.manual=c.investimento?'1':'';}
+  if($('cp-meta'))$('cp-meta').value=c.metaImp?Number(c.metaImp).toLocaleString('pt-BR'):'';
   calcInvestimento();
   if($('cp-org-ativo')){$('cp-org-ativo').checked=!!c.orgAtivo;toggleOrgField();}
   if($('cp-org-url'))$('cp-org-url').value=c.orgUrl||'';
@@ -2502,10 +2504,10 @@ async function saveCampAPI() {
     clk:$('cp-clk').value,
     plt:[...$('cp-plts').querySelectorAll('input:checked')].map(i=>i.value),
     cpmCli:parseFloat($('cp-cpm-cli').value)||0,
-    investimento:parseFloat($('cp-invest-manual')?.value)||0,
+    investimento:parseBR($('cp-invest-manual')?.value),
     orgAtivo:!!($('cp-org-ativo')?.checked),
     orgUrl:$('cp-org-url')?.value.trim()||'',
-    metaImp:parseFloat($('cp-meta').value)||0
+    metaImp:parseBR($('cp-meta').value)
   };
   const data = await apiFetch('/api/gestao/camps', {method:'POST', body:JSON.stringify(camp)});
   if(!data||data.error){toast('Erro: '+(data?.error||'falha'),'r');return;}

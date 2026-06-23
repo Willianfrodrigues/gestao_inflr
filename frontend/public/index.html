@@ -48,6 +48,22 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#EAF8F5 0%
 .nav-item.active{background:linear-gradient(135deg,#2DD9C0,#1FC4AD);color:#081E1A;font-weight:700;box-shadow:0 3px 14px rgba(45,217,192,.4);}
 .nav-ico{font-size:15px;min-width:20px;text-align:center;}
 .sb-foot{padding:14px 16px;border-top:1px solid rgba(45,217,192,.12);}
+
+/* ── LOGIN SCREEN ─── */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#081E1A 0%,#0F2B26 60%,#0A2420 100%);display:flex;align-items:center;justify-content:center;z-index:9999;}
+#login-screen.hidden{display:none;}
+.login-box{background:rgba(255,255,255,.04);border:1px solid rgba(45,217,192,.2);border-radius:16px;padding:40px 36px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+.login-logo{text-align:center;margin-bottom:32px;}
+.login-logo span{font-size:32px;font-weight:800;color:#2DD9C0;letter-spacing:-1px;}
+.login-logo p{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px;text-transform:uppercase;margin-top:6px;}
+.login-field{margin-bottom:16px;}
+.login-field label{display:block;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:6px;letter-spacing:.5px;}
+.login-field input{width:100%;padding:12px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(45,217,192,.2);border-radius:8px;color:#fff;font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border .2s;}
+.login-field input:focus{border-color:rgba(45,217,192,.6);}
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,#2DD9C0,#1FC4AD);border:none;border-radius:8px;color:#081E1A;font-size:14px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;margin-top:8px;transition:opacity .2s;}
+.login-btn:hover{opacity:.9;}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;}
+.login-err{color:#EF4444;font-size:12px;margin-top:10px;text-align:center;min-height:18px;}
 .sb-user{display:flex;align-items:center;gap:9px;}
 .sb-av{width:30px;height:30px;border-radius:50%;background:rgba(45,217,192,.2);border:1px solid rgba(45,217,192,.4);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--green);flex-shrink:0;}
 .sb-uname{font-size:12.5px;font-weight:600;color:#fff;}
@@ -249,6 +265,17 @@ tbody td{padding:10px 13px;font-size:12.5px;}
 </style>
 </head>
 <body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo"><span>inflr</span><p>Painel de Gestão</p></div>
+    <div class="login-field"><label>USUÁRIO</label><input type="text" id="login-user" placeholder="usuário" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="login-field"><label>SENHA</label><input type="password" id="login-pw" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <!-- ── MODAL ADMIN ── -->
@@ -422,7 +449,7 @@ tbody td{padding:10px 13px;font-size:12.5px;}
 </div>
 
 <!-- ── SHELL ── -->
-<div class="shell" id="admin-shell">
+<div id="app-shell" style="display:none"><div class="shell" id="admin-shell">
   <aside class="sidebar">
     <div class="sb-brand">
       <div class="sb-logo"><img src="data:image/png;base64,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" alt="inflr"></div>
@@ -444,8 +471,9 @@ tbody td{padding:10px 13px;font-size:12.5px;}
     <div class="sb-foot">
       <div class="sb-user">
         <div class="sb-av">AD</div>
-        <div><div class="sb-uname">Admin</div><div class="sb-urole">inflr</div></div>
+        <div><div class="sb-uname" id="sb-username">Admin</div><div class="sb-urole" id="sb-userrole">INFLR</div></div>
       </div>
+      <button onclick="doLogout()" style="margin-top:10px;width:100%;padding:7px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:6px;color:#EF4444;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Sair</button>
     </div>
   </aside>
 
@@ -698,6 +726,77 @@ tbody td{padding:10px 13px;font-size:12.5px;}
 </div>
 
 <script>
+// ─── API CONFIG ───
+const API = 'https://inflr-eight.vercel.app';
+let AUTH = { token: localStorage.getItem('inflr_token'), user: JSON.parse(localStorage.getItem('inflr_user') || 'null') };
+
+async function apiFetch(path, opts={}) {
+  const headers = {'Content-Type':'application/json'};
+  if(AUTH.token) headers['Authorization'] = 'Bearer ' + AUTH.token;
+  const res = await fetch(API + path, {...opts, headers: {...headers, ...(opts.headers||{})}});
+  if(res.status === 401) { doLogout(); return null; }
+  return res.json();
+}
+
+// ─── LOGIN ───
+async function doLogin() {
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-err');
+  const user = document.getElementById('login-user').value.trim();
+  const pw   = document.getElementById('login-pw').value.trim();
+  if(!user || !pw) { err.textContent = 'Preencha usuário e senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...'; err.textContent = '';
+  try {
+    const data = await fetch(API + '/api/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username: user, password: pw})
+    }).then(r => r.json());
+    if(data.error) { err.textContent = data.error; btn.disabled=false; btn.textContent='Entrar'; return; }
+    AUTH.token = data.token;
+    AUTH.user  = data;
+    localStorage.setItem('inflr_token', data.token);
+    localStorage.setItem('inflr_user', JSON.stringify(data));
+    showApp();
+  } catch(e) { err.textContent = 'Erro de conexão.'; btn.disabled=false; btn.textContent='Entrar'; }
+}
+
+function doLogout() {
+  localStorage.removeItem('inflr_token');
+  localStorage.removeItem('inflr_user');
+  AUTH = {token: null, user: null};
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('app-shell').style.display = 'none';
+}
+
+async function showApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-shell').style.display = '';
+  // Update user display
+  const uname = document.getElementById('sb-username');
+  const urole = document.getElementById('sb-userrole');
+  if(uname) uname.textContent = AUTH.user?.nome || AUTH.user?.username || 'Admin';
+  if(urole) urole.textContent = AUTH.user?.role === 'admin' ? 'INFLR' : (AUTH.user?.role||'').toUpperCase();
+  // Load data from API
+  await loadAppData();
+  goTo('gerencial', document.querySelector('.nav-item'));
+}
+
+async function loadAppData() {
+  const [clients, camps] = await Promise.all([
+    apiFetch('/api/gestao/clients'),
+    apiFetch('/api/gestao/camps'),
+  ]);
+  if(clients && !clients.error) {
+    S.clients = clients.map(c => ({...c, cor: c.cor||'#2DD9C0', mets: c.mets||[]}));
+  }
+  if(camps && !camps.error) {
+    S.camps = camps.map(c => ({...c, data:{imp:[],clk:[],tp:[],reach:[]}}));
+  }
+  renderCliGrid();
+  renderCampTable();
+}
+
 // ─── HELPERS ───
 const $=id=>document.getElementById(id);
 function toast(msg,t){const el=$('toast');el.textContent=msg;el.className='toast '+(t==='g'?'tg':t==='r'?'tr':'ts')+' show';setTimeout(()=>el.className='toast',3000);}
@@ -714,24 +813,8 @@ const PTITLES={gerencial:'Painel Gerencial','cliente-view':'Ver como Cliente','a
 // ─── STATE ───
 let S={
   _ecli:null,_ecamp:null,_ckws:[],_cex:[],_fcamp:'',_cliLogo:{},_selCor:'#3EE88A',
-  clients:[
-    {id:'c1',nome:'BRA.BET',emp:'BRA Apostas SA',user:'brabet',pw:'bra2026',cor:'#4B8BFF',cpm:38,clk:'clicks_link',logo:null,mets:['impressions','clicks','ctr','thruplay','vtr','reach','influencers','adname']},
-    {id:'c2',nome:'Rede Ronaldo',emp:'Rede Ronaldo Sports',user:'rede.ronaldo',pw:'rr2026',cor:'#3EE88A',cpm:35,clk:'clicks_link',logo:null,mets:['impressions','clicks','ctr','thruplay','vtr','influencers','adname','comments','likes']},
-    {id:'c3',nome:'Florida Rental Car',emp:'FRC Inc.',user:'florida.rc',pw:'frc2026',cor:'#9D6FFF',cpm:40,clk:'clicks',logo:null,mets:['impressions','clicks','ctr','vtr','reach','adname']},
-    {id:'c4',nome:'Tachão Doces',emp:'Tachão LTDA',user:'tachao',pw:'tach2026',cor:'#FF8C42',cpm:32,clk:'clicks_link',logo:null,mets:['impressions','clicks','ctr','thruplay','vtr','influencers']},
-  ],
-  camps:[
-    {id:'p1',nome:'BRA | META | AWARENESS | COPA',cid:'c1',kws:['BRA','COPA'],ex:[],ini:'2026-06-01',fim:'2026-06-30',clk:'clicks_link',plt:'meta',budget:15000,cpmCusto:18.5,
-     data:{imp:[8200,9100,7800,10200,11500,9800,12100,8900,10500,11200,13400,9600,8700,11800,12900,10100,9300,10800],clk:[12,18,8,22,31,19,28,14,25,30,38,16,12,27,34,21,15,24],tp:[280,320,260,380,440,310,490,290,370,420,510,330,270,450,480,360,290,410],reach:[7200,8100,6900,9100,10300,8700,10800,7900,9300,10000,12100,8500,7700,10500,11500,9000,8200,9600]}},
-    {id:'p2',nome:'REDE RONALDO | META | COPA',cid:'c2',kws:['REDE','RONALDO'],ex:[],ini:'2026-06-01',fim:'2026-06-30',clk:'clicks_link',plt:'meta',budget:20000,cpmCusto:16,
-     data:{imp:[15000,18200,14100,21000,24500,19800,27000,17500,22000,24800,30000,20500,16800,25500,28000,21000,18500,23500],clk:[145,182,132,215,248,201,278,168,225,252,312,195,162,261,287,212,185,238],tp:[820,1020,760,1180,1380,1040,1560,940,1240,1380,1710,1100,900,1440,1600,1170,1010,1310],reach:[13200,16100,12500,18700,21800,17600,24000,15500,19600,22100,26800,18200,14900,22700,24900,18700,16400,20900]}},
-    {id:'p3',nome:'REDE RONALDO | TIKTOK | COPA',cid:'c2',kws:['REDE','RONALDO'],ex:[],ini:'2026-06-01',fim:'2026-06-30',clk:'clicks_link',plt:'tiktok',budget:8000,cpmCusto:12,
-     data:{imp:[45000,62000,38000,71000,85000,64000,98000,52000,78000,89000,112000,69000,48000,92000,105000,74000,58000,81000],clk:[380,520,310,610,730,540,860,440,670,760,980,580,400,790,920,630,480,700],tp:[3200,4500,2700,5200,6300,4700,7200,3700,5700,6500,8300,4900,3300,6700,7600,5300,4100,5900],reach:[40000,55000,34000,63000,76000,57000,88000,46000,70000,80000,101000,62000,43000,83000,95000,67000,52000,73000]}},
-    {id:'p4',nome:'FLORIDA RC | META | JUNHO',cid:'c3',kws:['FLORIDA','RENTAL'],ex:[],ini:'2026-06-01',fim:'2026-06-30',clk:'clicks',plt:'meta',budget:18000,cpmCusto:20,
-     data:{imp:[8500,9800,7900,11200,12800,10300,14100,9200,11700,12900,15500,10800,9000,13400,15000,11400,9800,12200],clk:[38,45,34,52,60,47,68,41,55,61,74,49,40,63,71,53,45,58],tp:[420,490,370,560,640,510,710,450,580,650,780,540,440,670,750,565,490,615],reach:[7500,8700,6900,9900,11300,9100,12600,8100,10400,11500,13800,9600,8000,12000,13400,10200,8700,10900]}},
-    {id:'p5',nome:'TACHÃO | META | COPA',cid:'c4',kws:['TACHAO'],ex:['TEST'],ini:'2026-06-01',fim:'2026-06-30',clk:'clicks_link',plt:'meta',budget:5000,cpmCusto:22,
-     data:{imp:[3800,4500,3200,5100,5900,4700,6800,4100,5300,5900,7200,4900,3900,6100,7000,5200,4300,5600],clk:[28,35,23,41,48,37,56,31,43,49,62,38,29,50,58,42,33,47],tp:[190,225,158,255,295,235,340,203,265,295,362,243,194,305,352,259,213,281],reach:[3300,4000,2800,4500,5200,4100,6000,3600,4700,5200,6400,4300,3400,5400,6200,4600,3800,4900]}},
-  ],
+  clients:[],
+  camps:[],
   charts:{}
 };
 
@@ -2395,6 +2478,88 @@ function editCamp(id){
   },10);
 }
 
+
+// ─── SAVE CLIENT (API) ───
+const _origSaveCli = typeof saveCli !== 'undefined' ? saveCli : null;
+
+// ─── SAVE CAMP (API) ───
+async function saveCampAPI() {
+  const nome = $('cp-nome').value.trim();
+  const cid  = $('cp-cli').value;
+  if(!nome||!cid){toast('Nome e cliente obrigatórios.','r');return;}
+  const camp = {
+    id: S._ecamp||null, nome, cid,
+    kws:[...S._ckws], ex:[...S._cex],
+    ini:$('cp-ini').value, fim:$('cp-fim').value,
+    clk:$('cp-clk').value,
+    plt:[...$('cp-plts').querySelectorAll('input:checked')].map(i=>i.value),
+    cpmCli:parseFloat($('cp-cpm-cli').value)||0,
+    investimento:parseFloat($('cp-invest-manual')?.value)||0,
+    orgAtivo:!!($('cp-org-ativo')?.checked),
+    orgUrl:$('cp-org-url')?.value.trim()||'',
+    metaImp:parseFloat($('cp-meta').value)||0
+  };
+  const data = await apiFetch('/api/gestao/camps', {method:'POST', body:JSON.stringify(camp)});
+  if(!data||data.error){toast('Erro: '+(data?.error||'falha'),'r');return;}
+  if(data.id) camp.id = data.id;
+  camp.data = {imp:[],clk:[],tp:[],reach:[]};
+  const idx = S.camps.findIndex(x=>x.id===camp.id);
+  if(idx>=0) S.camps[idx]={...S.camps[idx],...camp}; else S.camps.push(camp);
+  S._ecamp=null; S._ckws=[]; S._cex=[];
+  cm('m-camp'); renderCampTable(); renderGerencial(); toast('Campanha salva!','g');
+}
+
+async function delCampAPI(id){
+  if(!confirm('Remover campanha?')) return;
+  await apiFetch('/api/gestao/camps', {method:'DELETE', body:JSON.stringify({id})});
+  S.camps = S.camps.filter(c=>c.id!==id);
+  renderCampTable(); renderGerencial(); toast('Removida.','g');
+}
+
+async function saveCliAPI(){
+  const nome = $('cl-nome').value.trim();
+  if(!nome){toast('Nome obrigatório.','r');return;}
+  const mets = [...$('cl-mets').querySelectorAll('input:checked')].map(i=>i.value);
+  const c = {
+    id: S._ecli||null,
+    nome, emp: $('cl-emp')?.value.trim()||'',
+    user: $('cl-user')?.value.trim()||'',
+    pw: $('cl-pw')?.value.trim()||'inflr2026',
+    cor: S._selCor||'#2DD9C0',
+    logo: S._cliLogo.data||null,
+    mets
+  };
+  const data = await apiFetch('/api/gestao/clients', {method:'POST', body:JSON.stringify(c)});
+  if(!data||data.error){toast('Erro: '+(data?.error||'falha'),'r');return;}
+  if(data.id) c.id = data.id;
+  const idx = S.clients.findIndex(x=>x.id===c.id);
+  if(idx>=0) S.clients[idx]=c; else S.clients.push(c);
+  S._ecli=null; S._cliLogo={};
+  cm('m-cli'); renderCliGrid(); toast('Cliente salvo!','g');
+}
+
+async function delCliAPI(id){
+  if(!confirm('Remover cliente?')) return;
+  await apiFetch('/api/gestao/clients', {method:'DELETE', body:JSON.stringify({id})});
+  S.clients = S.clients.filter(c=>c.id!==id);
+  renderCliGrid(); toast('Removido.','g');
+}
+
+// Override save/del functions
+window.saveCamp = saveCampAPI;
+window.delCamp  = delCampAPI;
+window.saveCli  = saveCliAPI;
+window.delCli   = delCliAPI;
+
+// ─── INIT ───
+window.addEventListener('DOMContentLoaded', function() {
+  if(AUTH.token) {
+    showApp();
+  }
+  // else login screen is already visible
+});
+
 </script>
+</div><!-- /app-shell -->
 </body>
 </html>

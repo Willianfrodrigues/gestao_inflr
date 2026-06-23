@@ -1,0 +1,4 @@
+psycopg2-binary
+PyJWT
+google-cloud-bigquery
+google-auth

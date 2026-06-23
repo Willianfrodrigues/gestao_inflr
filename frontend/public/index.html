@@ -1551,11 +1551,10 @@ async function renderCliView(cid){
   const pHeights=['120px','145px','100px'];
 
   $('cv-content').innerHTML=`
-  <div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;margin:-22px -24px 22px;position:sticky;top:54px;z-index:40;" style="background:${corBg};border-bottom:1px solid ${corBd};">
+  <div style="background:${corBg};border-bottom:1px solid ${corBd};padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;margin:-22px -24px 22px;position:sticky;top:54px;z-index:40;">
     <div style="display:flex;align-items:center;gap:12px;">${logoHtml}</div>
     <div style="display:flex;align-items:center;gap:6px;">
-      <div class="date-box" style="border-color:${corBd};">📅 01/06/2026 → 18/06/2026</div>
-      <button class="btn btn-sm" style="background:${cor};color:#071410;font-weight:700;">↻ Atualizar</button>
+      <span style="font-size:12px;color:var(--muted2);">📅 ${start} → ${end}</span>
     </div>
   </div>
 
@@ -1680,9 +1679,163 @@ function cliTab(id,el){
   document.querySelectorAll('#cli-tabs .tab').forEach(t=>t.classList.remove('active'));
   if(el)el.classList.add('active');
   ['overview','graphs','influencers','adname','campanhas','organico'].forEach(p=>{
-    const el=$('cli-panel-'+p);if(el)el.style.display=p===id?'block':'none';
+    const panel=$('cli-panel-'+p);if(panel)panel.style.display=p===id?'block':'none';
   });
   if(id==='graphs')setTimeout(buildCliCharts,50);
+  if(id==='influencers')loadCliInfluencers();
+  if(id==='adname')loadCliAdNames();
+}
+
+async function loadCliInfluencers(){
+  const panel=$('cli-panel-influencers');
+  if(!panel)return;
+  const cid=($('cv-sel')||{}).value||'';
+  if(!cid)return;
+  const cs=campsOf(cid);
+  const cli=cliById(cid);
+  const cor=cli?.cor||'#2DD9C0';
+  const {start,end}=getDateRange();
+  
+  panel.innerHTML='<div class="empty"><p>Carregando influenciadores...</p></div>';
+  
+  const allRows=[];
+  await Promise.all(cs.map(async function(c){
+    const s=c.ini||start, e=c.fim||end;
+    const data=await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+c.id+'&start_date='+s+'&end_date='+e);
+    if(!data||data.error)return;
+    (data.rows||[]).forEach(function(r){
+      const imp=Number(r.impressions||0);
+      if(!imp)return;
+      allRows.push({
+        name:r.influenciador||r.ad_name||'Sem nome',
+        imp, clk:Number(r.clicks_link||r.clicks||0),
+        tp:Number(r.thruplay||0), ctr:Number(r.ctr||0), vtr:Number(r.vtr||0)
+      });
+    });
+  }));
+
+  // Agrupar por nome
+  const map={};
+  allRows.forEach(function(r){
+    if(!map[r.name])map[r.name]={name:r.name,imp:0,clk:0,tp:0};
+    map[r.name].imp+=r.imp; map[r.name].clk+=r.clk; map[r.name].tp+=r.tp;
+  });
+  const inflData=Object.values(map).filter(r=>r.imp>0).sort((a,b)=>b.imp-a.imp);
+
+  if(!inflData.length){
+    panel.innerHTML='<div class="empty"><p>Nenhum dado de influenciadores encontrado.</p></div>';
+    return;
+  }
+
+  const medals=['🥇','🥈','🥉'];
+  const pColors=['#C0C0C0',cor,'#CD7F32'];
+  const pHeights=['120px','145px','100px'];
+  const top3=inflData.slice(0,3);
+  const podOrd=top3.length>=2?[top3[1],top3[0],top3[2]].filter(Boolean):top3;
+  const podIdx=top3.length>=2?[1,0,2]:[0];
+  const maxImp=inflData[0].imp||1;
+  const show=cli?.mets||[];
+
+  panel.innerHTML=
+    '<div class="sec-lbl" style="margin-top:0;">🏆 Top Influenciadores</div>'
+    +'<div style="margin-bottom:20px;"><div class="podium-wrap">'
+    +podOrd.map(function(inf,i){
+      const oi=podIdx[i]||i;const col=pColors[oi]||cor;const h=pHeights[oi]||'80px';
+      return '<div class="podium-col"><div class="podium-info">'
+        +'<div class="podium-medal">'+medals[oi]+'</div>'
+        +'<div class="podium-name">'+inf.name+'</div>'
+        +'<div class="podium-val" style="color:'+col+';">'+fmt(inf.imp)+'</div>'
+        +'<div class="podium-sub">impressões</div></div>'
+        +'<div class="podium-bar" style="height:'+h+';background:'+col+'18;border-color:'+col+'44;"></div></div>';
+    }).join('')+'</div></div>'
+    +'<div class="tbl-card"><div class="tbl-top">'
+    +'<div class="tbl-ttl">Ranking Completo</div>'
+    +'<span class="badge bg-gray">'+inflData.length+' influenciadores</span>'
+    +'</div><div class="tbl-wrap"><table>'
+    +'<thead><tr><th>#</th><th>Influenciador</th><th>Impressões</th>'
+    +(show.includes('clicks')?'<th>Cliques</th>':'')
+    +(show.includes('ctr')?'<th>CTR</th>':'')
+    +(show.includes('thruplay')?'<th>ThruPlay</th>':'')
+    +(show.includes('vtr')?'<th>VTR</th>':'')
+    +'</tr></thead><tbody>'
+    +inflData.map(function(inf,i){
+      const pct=(inf.imp/maxImp*100).toFixed(1);
+      const med=i===0?'🥇':i===1?'🥈':i===2?'🥉':'<span style="color:var(--muted);font-size:11px;">'+(i+1)+'</span>';
+      const ctr=inf.imp?(inf.clk/inf.imp*100):0;
+      const vtr=inf.imp?(inf.tp/inf.imp*100):0;
+      return '<tr><td style="text-align:center;">'+med+'</td>'
+        +'<td style="font-weight:600;">'+inf.name+'</td>'
+        +'<td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:'+pct+'%;background:'+cor+';"></div></div><span class="bar-v">'+fmt(inf.imp)+'</span></div></td>'
+        +(show.includes('clicks')?'<td style="color:var(--green);font-weight:600;">'+fmt(inf.clk)+'</td>':'')
+        +(show.includes('ctr')?'<td style="color:var(--pink);">'+fmtP(ctr)+'</td>':'')
+        +(show.includes('thruplay')?'<td>'+fmt(inf.tp)+'</td>':'')
+        +(show.includes('vtr')?'<td style="color:var(--purple);font-weight:600;">'+fmtP(vtr)+'</td>':'')
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div></div>';
+}
+
+async function loadCliAdNames(){
+  const panel=$('cli-panel-adname');
+  if(!panel)return;
+  const cid=($('cv-sel')||{}).value||'';
+  if(!cid)return;
+  const cs=campsOf(cid);
+  const cli=cliById(cid);
+  const cor=cli?.cor||'#2DD9C0';
+  const show=cli?.mets||[];
+  const {start,end}=getDateRange();
+
+  panel.innerHTML='<div class="empty"><p>Carregando ads...</p></div>';
+
+  const allRows=[];
+  await Promise.all(cs.map(async function(c){
+    const s=c.ini||start, e=c.fim||end;
+    const data=await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+c.id+'&start_date='+s+'&end_date='+e);
+    if(!data||data.error)return;
+    (data.rows||[]).forEach(function(r){
+      const imp=Number(r.impressions||0);
+      if(!imp)return;
+      allRows.push({
+        ad:r.ad_name||r.AD_NAME||'',
+        plt:r.platform||'meta',
+        imp, clk:Number(r.clicks_link||r.clicks||0),
+        tp:Number(r.thruplay||0)
+      });
+    });
+  }));
+
+  const sorted=allRows.filter(r=>r.imp>0).sort((a,b)=>b.imp-a.imp);
+  if(!sorted.length){panel.innerHTML='<div class="empty"><p>Nenhum dado encontrado.</p></div>';return;}
+  const maxImp=sorted[0].imp||1;
+
+  panel.innerHTML='<div class="tbl-card"><div class="tbl-top">'
+    +'<div class="tbl-ttl">Análise por Ad Name</div>'
+    +'<span class="badge bg-gray">'+sorted.length+' anúncios</span>'
+    +'</div><div class="tbl-wrap"><table>'
+    +'<thead><tr><th>Ad Name</th><th>Plataforma</th><th>Impressões</th>'
+    +(show.includes('clicks')?'<th>Cliques</th>':'')
+    +(show.includes('ctr')?'<th>CTR</th>':'')
+    +(show.includes('thruplay')?'<th>ThruPlay</th>':'')
+    +(show.includes('vtr')?'<th>VTR</th>':'')
+    +'</tr></thead><tbody>'
+    +sorted.map(function(ad){
+      const pct=(ad.imp/maxImp*100).toFixed(1);
+      const ctr=ad.imp?(ad.clk/ad.imp*100):0;
+      const vtr=ad.imp?(ad.tp/ad.imp*100):0;
+      const plt=ad.plt||'meta';
+      const pltClass=plt.toLowerCase().includes('tiktok')?'plt-tiktok':plt.toLowerCase().includes('dv360')?'plt-dv360':'plt-meta';
+      return '<tr>'
+        +'<td style="font-weight:600;font-size:12px;max-width:200px;word-break:break-word;">'+ad.ad+'</td>'
+        +'<td><span class="plt '+pltClass+'">'+plt+'</span></td>'
+        +'<td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:'+pct+'%;background:'+cor+';"></div></div><span class="bar-v">'+fmt(ad.imp)+'</span></div></td>'
+        +(show.includes('clicks')?'<td style="color:var(--green);font-weight:600;">'+fmt(ad.clk)+'</td>':'')
+        +(show.includes('ctr')?'<td style="color:var(--pink);">'+fmtP(ctr)+'</td>':'')
+        +(show.includes('thruplay')?'<td>'+fmt(ad.tp)+'</td>':'')
+        +(show.includes('vtr')?'<td style="color:var(--purple);font-weight:600;">'+fmtP(vtr)+'</td>':'')
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div></div>';
 }
 
 function buildCliCharts(){

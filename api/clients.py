@@ -68,3 +68,5 @@ class handler(BaseHTTPRequestHandler):
             self._send(error_response(str(e), 401))
         except Exception as e:
             self._send(error_response(str(e), 500))
+
+app = handler

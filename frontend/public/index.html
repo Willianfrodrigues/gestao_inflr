@@ -1608,7 +1608,7 @@ function renderOrgTab(rows, cor){
   const iClk=h.findIndex(x=>/clique|click/i.test(x));
   const data=rows?rows.slice(1).filter(r=>r.some(c=>c)&&!/total/i.test(r[Math.max(iInfl,0)]||'')):[];
   const medals=['🥇','🥈','🥉'];
-  const pColors=[cor,'#C0C0C0','#CD7F32'];
+  const pColors=['#F59E0B','#94A3B8','#CD7F32']; // ouro, prata, bronze
   const top3=ranking.slice(0,3);
   const podOrd=top3.length>=2?[top3[1],top3[0],top3[2]].filter(Boolean):top3;
   const podIdx=top3.length>=2?[1,0,2]:[0];
@@ -1690,7 +1690,7 @@ async function loadOrgCliView(orgCamps, cor){
 
   // Usar renderOrgTab com os dados mesclados — criar rows sintéticas
   const medals = ['🥇','🥈','🥉'];
-  const pColors = [cor,'#C0C0C0','#CD7F32'];
+  const pColors = ['#F59E0B','#94A3B8','#CD7F32']; // ouro, prata, bronze
   const top3 = ranking.slice(0,3);
   const podOrd = top3.length>=2?[top3[1],top3[0],top3[2]].filter(Boolean):top3;
   const podIdx = top3.length>=2?[1,0,2]:[0];

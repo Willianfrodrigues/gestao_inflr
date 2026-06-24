@@ -2034,11 +2034,16 @@ async function loadCliInfluencers(){
     });
   }));
 
-  // Agrupar por nome
+  // Agrupar por nome (case-insensitive)
   const map={};
   allRows.forEach(function(r){
-    if(!map[r.name])map[r.name]={name:r.name,imp:0,clk:0,tp:0};
-    map[r.name].imp+=r.imp; map[r.name].clk+=r.clk; map[r.name].tp+=r.tp;
+    const key=r.name.toLowerCase().trim();
+    if(!map[key])map[key]={name:r.name,imp:0,clk:0,tp:0};
+    else if(r.name !== map[key].name){
+      // Preferir o nome corrigido (maior chance de ter maiúsculas intencionais)
+      // Mantém o nome que veio de correção manual
+    }
+    map[key].imp+=r.imp; map[key].clk+=r.clk; map[key].tp+=r.tp;
   });
   const inflData=Object.values(map).filter(r=>r.imp>0).sort((a,b)=>b.imp-a.imp);
 
@@ -2674,8 +2679,8 @@ async function renderCSInflTable(){
       const tp  = Number(r.thruplay||0);
       const adNameCS = (r.ad_name||r.AD_NAME||'').trim();
       const name = (_inflCorrections[adNameCS]||r.influenciador||extractInfluencer(adNameCS)||'Sem Influenciador').trim();
-      // Agrupar por nome+cliente para somar campanhas diferentes
-      const key = name + '|' + (cli?.nome||'');
+      // Agrupar por nome+cliente (case-insensitive)
+      const key = name.toLowerCase().trim() + '|' + (cli?.nome||'').toLowerCase();
       if(!inflMap[key]){
         inflMap[key] = {name, camp:camp.nome, campId:camp.id, cli:cli?.nome||'—', imp:0, clk:0, tp:0, camps:[]};
       }

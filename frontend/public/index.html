@@ -618,6 +618,14 @@ tbody td{padding:10px 13px;font-size:12.5px;}
           </select>
           <span id="infl-admin-count" style="font-size:12px;color:var(--muted);background:var(--surface2);padding:4px 12px;border-radius:20px;white-space:nowrap;"></span>
         </div>
+        <div id="infl-bulk-bar" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <span id="infl-bulk-count" style="font-size:12.5px;color:var(--muted2);">0 selecionados</span>
+          <div style="display:flex;gap:8px;">
+            <input id="infl-bulk-input" placeholder="Nome do influenciador para todos selecionados..." style="padding:7px 12px;border-radius:var(--r);border:1px solid var(--green);background:var(--surface);font-size:13px;color:var(--text);font-family:Inter,sans-serif;outline:none;min-width:280px;">
+            <button class="btn btn-green btn-sm" onclick="saveBulkInflEdit()">💾 Salvar todos</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearBulkSelection()">Cancelar</button>
+          </div>
+        </div>
         <div id="infl-alerta-wrap" style="display:none;margin-bottom:14px;">
           <div id="infl-alerta" style="padding:10px 14px;border-radius:var(--r);border:1px solid var(--red);background:var(--red-bg);font-size:12.5px;color:var(--red);display:flex;align-items:center;gap:8px;">
           </div>
@@ -642,7 +650,16 @@ tbody td{padding:10px 13px;font-size:12.5px;}
         <div class="kpi-grid" id="cs-kpis" style="margin-bottom:22px;"></div>
 
         <!-- Status por cliente -->
-        <div class="sec-lbl" style="margin-top:0;">Status da Carteira</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0;margin-bottom:10px;">
+          <div class="sec-lbl" style="margin:0;">Status por Campanha</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <select id="cs-status-filter" onchange="renderCSPainel()" style="padding:5px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12px;color:var(--text);font-family:Inter,sans-serif;outline:none;">
+              <option value="ativas">Campanhas ativas</option>
+              <option value="todas">Todas as campanhas</option>
+              <option value="encerradas">Encerradas</option>
+            </select>
+          </div>
+        </div>
         <div id="cs-carteira" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:24px;"></div>
 
         <!-- Alertas -->
@@ -665,8 +682,7 @@ tbody td{padding:10px 13px;font-size:12.5px;}
             <option value="ctr">Ordenar por CTR</option>
             <option value="vtr">Ordenar por VTR</option>
             <option value="thruplay">Ordenar por ThruPlay</option>
-            <option value="cost">Ordenar por Custo</option>
-            <option value="cpm">Ordenar por CPM Efetivo</option>
+
           </select>
           <input id="cs-infl-search" placeholder="🔍 Buscar influenciador..." oninput="renderCSInflTable()"
             style="flex:1;min-width:180px;padding:7px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none;">
@@ -681,7 +697,6 @@ tbody td{padding:10px 13px;font-size:12.5px;}
             <thead><tr>
               <th>#</th><th>Influenciador</th><th>Campanha</th><th>Cliente</th>
               <th>Impressões</th><th>Cliques</th><th>CTR</th><th>ThruPlay</th><th>VTR</th>
-              <th>Custo Est.</th><th>CPM Ef.</th>
             </tr></thead>
             <tbody id="cs-infl-tbody"></tbody>
           </table></div>
@@ -692,7 +707,7 @@ tbody td{padding:10px 13px;font-size:12.5px;}
         <div class="tbl-card">
           <div class="tbl-top"><div class="tbl-ttl">Resumo por Cliente</div></div>
           <div class="tbl-wrap"><table>
-            <thead><tr><th>Cliente</th><th>Campanhas</th><th>Impressões</th><th>Meta</th><th>% Entrega</th><th>Cliques</th><th>CTR</th><th>Custo Est.</th><th>Status</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Campanhas</th><th>Impressões</th><th>Meta</th><th>% Entrega</th><th>Cliques</th><th>CTR</th><th>Status</th></tr></thead>
             <tbody id="cs-cli-tbody"></tbody>
           </table></div>
         </div>
@@ -2502,37 +2517,41 @@ async function renderCSPainel(){
   // Carteira por cliente
   const alertas = [];
   if($('cs-carteira')){
-    $('cs-carteira').innerHTML = S.clients.map(function(cli){
-      const cs = campsOf(cli.id);
-      const imp = cs.reduce(function(s,c){return s+Number((c._kpi||{}).impressions||0);},0);
-      const clk = cs.reduce(function(s,c){return s+Number((c._kpi||{}).clicks_link||(c._kpi||{}).clicks||0);},0);
-      const tp  = cs.reduce(function(s,c){return s+Number((c._kpi||{}).thruplay||0);},0);
+    const t = new Date().toISOString().split('T')[0];
+    const statusFilter = ($('cs-status-filter')||{}).value||'ativas';
+    // Filtrar campanhas pelo status selecionado
+    const campsFiltered = S.camps.filter(function(c){
+      if(statusFilter==='ativas') return c.ini<=t && c.fim>=t;
+      if(statusFilter==='encerradas') return c.fim<t;
+      return true; // todas
+    });
+    $('cs-carteira').innerHTML = campsFiltered.map(function(c){
+      const cli = cliById(c.cid);
+      const cs = [c]; // uma campanha por card
+      const imp = Number((c._kpi||{}).impressions||0);
+      const clk = Number((c._kpi||{}).clicks_link||(c._kpi||{}).clicks||0);
+      const tp  = Number((c._kpi||{}).thruplay||0);
       const ctr = imp?(clk/imp*100):0;
       const vtr = imp?(tp/imp*100):0;
-      const metaImp = cs.reduce(function(s,c){return s+(c.metaImp||0);},0);
+      const metaImp = c.metaImp||0;
       const pctEntrega = metaImp?(imp/metaImp*100):0;
-      const t = new Date().toISOString().split('T')[0];
-      const ativas2 = cs.filter(function(c){return c.ini<=t&&c.fim>=t;});
+      const ativas2 = (c.ini<=t && c.fim>=t) ? [c] : [];
+      // Use cli for colors
+      const cor = cli?.cor||'#2DD9C0';
 
       // Calcular pace por campanha — sempre usa período real da campanha, não filtro global
       var pace = 0;
       var metaDiaria = 0, mediaDiaria = 0;
-      var hoje = new Date().toISOString().split('T')[0];
-      cs.forEach(function(c){
-        if(!c.ini||!c.fim||!c.metaImp) return;
-        var ini = new Date(c.ini), fim = new Date(c.fim), hj = new Date(hoje);
-        var diasTotais = Math.max(1, Math.round((fim-ini)/(1000*60*60*24)));
-        var diasDecorridos = Math.max(1, Math.min(
-          Math.round((hj-ini)/(1000*60*60*24)),
-          diasTotais
-        ));
-        var metaDia = c.metaImp / diasTotais;
-        // Usar _kpiTotal (período completo da campanha) para o pace
+      // Calcular pace para esta campanha
+      if(c.ini&&c.fim&&c.metaImp){
+        var hoje2 = new Date().toISOString().split('T')[0];
+        var ini2 = new Date(c.ini), fim2 = new Date(c.fim), hj2 = new Date(hoje2);
+        var diasTotais = Math.max(1, Math.round((fim2-ini2)/(1000*60*60*24)));
+        var diasDecorridos = Math.max(1, Math.min(Math.round((hj2-ini2)/(1000*60*60*24)), diasTotais));
+        metaDiaria = c.metaImp / diasTotais;
         var impTotal = Number((c._kpiTotal||c._kpi||{}).impressions||0);
-        var mediaDia = impTotal / diasDecorridos;
-        metaDiaria += metaDia;
-        mediaDiaria += mediaDia;
-      });
+        mediaDiaria = impTotal / diasDecorridos;
+      }
       pace = metaDiaria > 0 ? (mediaDiaria / metaDiaria * 100) : 0;
 
       // Alertas por pace
@@ -2553,15 +2572,15 @@ async function renderCSPainel(){
       if(metaDiaria===0){
         statusColor = 'var(--muted)'; statusLabel = 'Sem meta';
       }
-      const logoHtml = cli.logo
+      const logoHtml = cli?.logo
         ?'<img src="'+cli.logo+'" style="height:24px;object-fit:contain;border-radius:4px;">'
-        :'<span style="font-weight:700;color:'+cli.cor+';">'+cli.nome.slice(0,2).toUpperCase()+'</span>';
+        :'<span style="font-weight:700;color:'+cor+';">'+c.nome.slice(0,2).toUpperCase()+'</span>';
 
-      return '<div class="card" style="border-top:3px solid '+cli.cor+';">'
+      return '<div class="card" style="border-top:3px solid '+cor+';">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
         +'<div style="display:flex;align-items:center;gap:8px;">'+logoHtml
         +'<div><div style="font-weight:700;font-size:14px;">'+cli.nome+'</div>'
-        +'<div style="font-size:10px;color:var(--muted);">'+ativas2.length+' campanha(s) ativa(s)</div></div></div>'
+        +'</div></div>'
         +'<span class="badge" style="background:'+statusColor+'20;color:'+statusColor+';">'+statusLabel+'</span>'
         +'</div>'
         +(metaDiaria>0?'<div style="margin-bottom:10px;">'
@@ -2687,8 +2706,6 @@ async function renderCSInflTable(){
       +'<td style="color:'+ctrColor+';font-weight:700;">'+fmtP(r.ctr)+'</td>'
       +'<td>'+fmt(r.tp)+'</td>'
       +'<td style="color:'+vtrColor+';font-weight:700;">'+fmtP(r.vtr)+'</td>'
-      +'<td style="color:var(--red);">'+fmtR(r.cost)+'</td>'
-      +'<td style="color:var(--muted);">'+fmtR(r.cpm)+'</td>'
       +'</tr>';
   }).join('');
 }
@@ -2719,7 +2736,6 @@ function renderCSCliTable(){
       +'<td><span style="color:'+statusCol+';font-weight:700;">'+(metaImp?fmtP(pct):'—')+'</span></td>'
       +'<td style="color:var(--green);font-weight:600;">'+fmt(clk)+'</td>'
       +'<td style="color:'+(ctr>=0.5?'var(--green)':'var(--gold)')+';">'+fmtP(ctr)+'</td>'
-      +'<td style="color:var(--red);">'+fmtR(cost)+'</td>'
       // Calcular pace por cliente
       var csPace = 0;
       var csMD = 0, csRD = 0;
@@ -2770,6 +2786,12 @@ async function loadInflAdmin(){
 
   tbody.innerHTML='<tr><td colspan="6"><div class="empty"><p>Carregando...</p></div></td></tr>';
 
+  // Carregar correções salvas da API
+  const corrData = await apiFetch('/api/gestao/infl-corrections?camp_id='+campId);
+  if(corrData && !corrData.error){
+    Object.assign(_inflCorrections, corrData);
+  }
+
   // Buscar datas da campanha
   const start = camp.ini || new Date().toISOString().split('T')[0];
   const end   = camp.fim || new Date().toISOString().split('T')[0];
@@ -2785,7 +2807,11 @@ async function loadInflAdmin(){
 
   // Montar allAds a partir dos dados reais do BigQuery
   const allAds = (data.rows||[]).map(function(r){
-    return {ad: r.ad_name||r.AD_NAME||r.influenciador||'', group: r.campaign_name||r.CAMPAIGN_NAME||'', campId: campId};
+    return {
+      ad: r.ad_name||r.AD_NAME||'',
+      group: r.ad_group_name||r.AD_GROUP_NAME||'',
+      campId: campId
+    };
   });
 
   const search      = (($('infl-admin-search')||{}).value||'').toLowerCase().trim();
@@ -2906,6 +2932,53 @@ function useAsInflName(i, source){
   inp.focus();
 }
 
+// Bulk selection
+let _bulkSelected = new Set();
+
+function toggleBulkSelect(i){
+  if(_bulkSelected.has(i)) _bulkSelected.delete(i);
+  else _bulkSelected.add(i);
+  updateBulkBar();
+}
+
+function updateBulkBar(){
+  const bar = $('infl-bulk-bar');
+  const cnt = $('infl-bulk-count');
+  if(!bar) return;
+  if(_bulkSelected.size > 0){
+    bar.style.display='flex';
+    if(cnt) cnt.textContent = _bulkSelected.size+' selecionado(s)';
+  } else {
+    bar.style.display='none';
+  }
+}
+
+function clearBulkSelection(){
+  _bulkSelected.clear();
+  updateBulkBar();
+  document.querySelectorAll('.infl-row-check').forEach(function(cb){ cb.checked=false; });
+  document.querySelectorAll('[id^="inflrow-"]').forEach(function(tr){
+    if(!tr.id.includes('edit')) tr.style.background='';
+  });
+}
+
+async function saveBulkInflEdit(){
+  const val = ($('infl-bulk-input')||{}).value?.trim();
+  if(!val){ toast('Digite o nome do influenciador.','r'); return; }
+  const campId = ($('infl-camp-sel')||{}).value||'';
+  let saved = 0;
+  for(const i of _bulkSelected){
+    const r = _currentAds[i];
+    if(!r) continue;
+    const body = {camp_id: campId, ad_name: r.ad, ad_group: r.group||'', nome_correto: val};
+    const data = await apiFetch('/api/gestao/infl-corrections', {method:'POST', body:JSON.stringify(body)});
+    if(data && !data.error){ _inflCorrections[r.ad]=val; saved++; }
+  }
+  toast(saved+' correções salvas!','g');
+  clearBulkSelection();
+  loadInflAdmin();
+}
+
 function openInflEdit(i){
   // Fechar qualquer edição aberta
   document.querySelectorAll('[id^="inflrow-edit-"]').forEach(function(r){r.style.display='none';});
@@ -2922,12 +2995,17 @@ function cancelInflEdit(i){
   if(editRow) editRow.style.display='none';
 }
 
-function saveInflEdit(i){
+async function saveInflEdit(i){
   const r = _currentAds[i];
   if(!r) return;
   const inp = $('infl-edit-input-'+i);
   if(!inp) return;
   const val = inp.value.trim();
+  const campId = ($('infl-camp-sel')||{}).value||'';
+  // Save to API
+  const body = {camp_id: campId, ad_name: r.ad, ad_group: r.group||'', nome_correto: val};
+  const data = await apiFetch('/api/gestao/infl-corrections', {method:'POST', body:JSON.stringify(body)});
+  if(!data||data.error){ toast('Erro ao salvar: '+(data?.error||''), 'r'); return; }
   if(val){
     _inflCorrections[r.ad] = val;
     toast('Nome salvo: '+val, 'g');

@@ -2008,6 +2008,13 @@ async function loadCliInfluencers(){
   
   panel.innerHTML='<div class="empty"><p>Carregando influenciadores...</p></div>';
   
+  // Buscar correções salvas para todas as campanhas do cliente
+  const corrMap = {};
+  await Promise.all(cs.map(async function(c){
+    const corr = await apiFetch('/api/gestao/infl-corrections?camp_id='+c.id);
+    if(corr && !corr.error) Object.assign(corrMap, corr);
+  }));
+
   const allRows=[];
   await Promise.all(cs.map(async function(c){
     const data=await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+c.id+'&start_date='+start+'&end_date='+end);
@@ -2015,8 +2022,12 @@ async function loadCliInfluencers(){
     (data.rows||[]).forEach(function(r){
       const imp=Number(r.impressions||0);
       if(!imp)return;
+      const adName = r.ad_name||r.AD_NAME||'';
+      // Aplicar correção salva se existir
+      const nomeCorrigido = corrMap[adName];
+      const nome = nomeCorrigido || r.influenciador || extractInfluencer(adName) || 'Sem Influenciador';
       allRows.push({
-        name:r.influenciador||r.ad_name||'Sem nome',
+        name: nome,
         imp, clk:Number(r.clicks_link||r.clicks||0),
         tp:Number(r.thruplay||0), ctr:Number(r.ctr||0), vtr:Number(r.vtr||0)
       });
@@ -2097,15 +2108,25 @@ async function loadCliAdNames(){
 
   panel.innerHTML='<div class="empty"><p>Carregando ads...</p></div>';
 
-  const allRows=[];
+  // Buscar correções
+  const corrMap2={};
+  await Promise.all(cs.map(async function(c){
+    const cr=await apiFetch('/api/gestao/infl-corrections?camp_id='+c.id);
+    if(cr&&!cr.error)Object.assign(corrMap2,cr);
+  }));
+
+    const allRows=[];
   await Promise.all(cs.map(async function(c){
     const data=await apiFetch('/api/gestao/data?type=by_influencer&camp_id='+c.id+'&start_date='+start+'&end_date='+end);
     if(!data||data.error)return;
     (data.rows||[]).forEach(function(r){
       const imp=Number(r.impressions||0);
       if(!imp)return;
+      const adN = r.ad_name||r.AD_NAME||'';
+      const corrName = corrMap2[adN]||'';
       allRows.push({
-        ad:r.ad_name||r.AD_NAME||'',
+        ad: adN,
+        influenciador: corrName || r.influenciador || extractInfluencer(adN) || '',
         plt:r.platform||'meta',
         imp, clk:Number(r.clicks_link||r.clicks||0),
         tp:Number(r.thruplay||0)
@@ -2651,7 +2672,8 @@ async function renderCSInflTable(){
       if(!imp) return;
       const clk = Number(r.clicks_link||r.clicks||0);
       const tp  = Number(r.thruplay||0);
-      const name = (r.influenciador||r.ad_name||'Sem nome').trim();
+      const adNameCS = (r.ad_name||r.AD_NAME||'').trim();
+      const name = (_inflCorrections[adNameCS]||r.influenciador||extractInfluencer(adNameCS)||'Sem Influenciador').trim();
       // Agrupar por nome+cliente para somar campanhas diferentes
       const key = name + '|' + (cli?.nome||'');
       if(!inflMap[key]){

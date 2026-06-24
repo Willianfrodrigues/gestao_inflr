@@ -1868,7 +1868,7 @@ async function renderCliView(cid){
     <button class="tab active" onclick="cliTab('overview',this)" style="--at:${cor}">Visão Geral</button>
 
     ${show.includes('influencers')?'<button class="tab" onclick="cliTab(\'influencers\',this)">Influenciadores</button>':''}
-    ${show.includes('adname')?'<button class="tab" onclick="cliTab(\'adname\',this)">Por Ad</button>':''}
+    
     <button class="tab" onclick="cliTab('adname',this)">Por Ad Name</button>
     ${cs.some(c=>c.orgAtivo&&c.orgUrl)?'<button class="tab" onclick="cliTab(\'organico\',this)">&#x1f4ca; Orgânico</button>':''}
   </div>

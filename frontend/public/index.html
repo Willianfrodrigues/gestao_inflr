@@ -1931,9 +1931,8 @@ async function renderCliView(cid){
 
   ${show.includes('influencers')?'<div id="cli-panel-influencers" style="display:none;"><div class="empty"><p>Clique na aba para carregar.</p></div></div>':''}
 
-  ${show.includes('adname')?'<div id="cli-panel-adname" style="display:none;"><div class="empty"><p>Clique na aba para carregar.</p></div></div>':''}
+  <div id="cli-panel-adname" style="display:none;"><div class="empty"><p>Clique na aba para carregar.</p></div></div>
 
-  <div id="cli-panel-adname-real" style="display:none;"><div class="empty"><p>Clique na aba para carregar.</p></div></div>
   <div id="cli-panel-campanhas" style="display:none;">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">
       ${cs.map(c=>{
@@ -1974,7 +1973,7 @@ async function renderCliView(cid){
 function cliTab(id,el){
   document.querySelectorAll('#cli-tabs .tab').forEach(t=>t.classList.remove('active'));
   if(el)el.classList.add('active');
-  ['overview','graphs','influencers','adname','adname-real','campanhas','organico'].forEach(p=>{
+  ['overview','graphs','influencers','adname','campanhas','organico'].forEach(p=>{
     const panel=$('cli-panel-'+p);if(panel)panel.style.display=p===id?'block':'none';
   });
   if(id==='graphs')setTimeout(buildCliCharts,50);

@@ -1344,8 +1344,11 @@ async function renderGerencial(){
     const meses = {};
     camps.forEach(function(c){
       if(!c.ini) return;
-      let cur = new Date(c.ini.substring(0,7)+'-01');
-      const fimDate = c.fim ? new Date(c.fim.substring(0,7)+'-01') : new Date(hoje2.getFullYear(), hoje2.getMonth(), 1);
+      // Garantir formato correto da data (pode vir como DD/MM/YYYY do banco)
+      const iniStr = c.ini.includes('/') ? c.ini.split('/').reverse().join('-') : c.ini;
+      const fimStr = c.fim ? (c.fim.includes('/') ? c.fim.split('/').reverse().join('-') : c.fim) : null;
+      let cur = new Date(iniStr.substring(0,7)+'-01');
+      const fimDate = fimStr ? new Date(fimStr.substring(0,7)+'-01') : new Date(hoje2.getFullYear(), hoje2.getMonth(), 1);
       while(cur <= fimDate && cur <= hoje2){
         const key = cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0');
         const lbl = cur.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
@@ -1359,17 +1362,19 @@ async function renderGerencial(){
       // Buscar KPI de todas as campanhas no mês
       const kpis = await Promise.all(camps.map(async function(c){
         // só buscar se campanha está ativa no mês
-        if(c.fim && c.fim < m.ini) return null;
-        if(c.ini && c.ini > m.fim) return null;
-        const s = c.ini && c.ini > m.ini ? c.ini : m.ini;
-        const e = c.fim && c.fim < m.fim ? c.fim : m.fim;
+        const cIni = c.ini ? (c.ini.includes('/')?c.ini.split('/').reverse().join('-'):c.ini) : null;
+        const cFim = c.fim ? (c.fim.includes('/')?c.fim.split('/').reverse().join('-'):c.fim) : null;
+        if(cFim && cFim < m.ini) return null;
+        if(cIni && cIni > m.fim) return null;
+        const s = cIni && cIni > m.ini ? cIni : m.ini;
+        const e = cFim && cFim < m.fim ? cFim : m.fim;
         const [kpi, cost] = await Promise.all([
           apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+s+'&end_date='+e),
           apiFetch('/api/gestao/data?type=cost&camp_id='+c.id+'&start_date='+s+'&end_date='+e)
         ]);
         const invest = (function(){
-          if(!c.ini||!c.fim) return c.investimento||0;
-          const diasTot = Math.max(1,Math.round((new Date(c.fim)-new Date(c.ini))/(86400000)));
+          if(!cIni||!cFim) return c.investimento||0;
+          const diasTot = Math.max(1,Math.round((new Date(cFim)-new Date(cIni))/(86400000)));
           const diasMes = Math.max(1,Math.round((new Date(e)-new Date(s))/(86400000))+1);
           return (c.investimento||0) * diasMes/diasTot;
         })();

@@ -489,7 +489,10 @@ tbody td{padding:10px 13px;font-size:12.5px;}
     <div class="topbar">
       <div class="tb-title" id="tb-title">Painel Gerencial</div>
       <div class="tb-right">
-        <div class="date-box">📅 <input type="date" id="ds" value="2026-06-01"> → <input type="date" id="de" value="2026-06-18"></div>
+        <select id="ger-cli-filter" onchange="renderGerencial()" style="padding:6px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12px;color:var(--text);font-family:Inter,sans-serif;outline:none;display:none;">
+          <option value="">Todos os clientes</option>
+        </select>
+        <div class="date-box">📅 <input type="date" id="ds" value="2026-06-01" style="color-scheme:light;"> → <input type="date" id="de" value="2026-06-30" style="color-scheme:light;"></div>
         <button class="btn btn-gold btn-sm" onclick="reloadData()">↻ Atualizar</button>
       </div>
     </div>
@@ -527,9 +530,6 @@ tbody td{padding:10px 13px;font-size:12.5px;}
         <div class="tbl-card">
           <div class="tbl-top">
             <div class="tbl-ttl">Evolução por Mês</div>
-            <select id="ger-cli-filter" onchange="renderGerencial()" style="padding:6px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12px;color:var(--text);font-family:Inter,sans-serif;outline:none;">
-              <option value="">Todos os clientes</option>
-            </select>
           </div>
           <div class="tbl-wrap"><table>
             <thead><tr><th>Mês</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>ThruPlay</th><th>VTR</th><th>Custo Real</th><th>Receita</th><th>Margem</th><th>% Margem</th></tr></thead>
@@ -977,7 +977,12 @@ function goTo(id,el){
   if(panel)panel.classList.add('active');
   if(el)el.classList.add('active');
   if($('tb-title'))$('tb-title').textContent=PTITLES[id]||id;
-  if(id==='gerencial')renderGerencial().catch(console.error);
+  if(id==='gerencial'){
+    const clf=$('ger-cli-filter'); if(clf) clf.style.display='';
+    renderGerencial().catch(console.error);
+  } else {
+    const clf=$('ger-cli-filter'); if(clf) clf.style.display='none';
+  }
   if(id==='adm-clientes')renderCliGrid();
   if(id==='adm-campanhas')renderCampTable();
   if(id==='adm-admins')renderAdmins();
@@ -1329,34 +1334,61 @@ async function renderGerencial(){
   });
   $('ger-tbody').innerHTML=gerRows.length?gerRows.join(''):'<tr><td colspan="13"><div class="empty"><p>Nenhuma campanha no período.</p></div></td></tr>';
 
-  // ── COMPARATIVO MENSAL ──
-  const mmap={};
-  camps.forEach(function(c){
-    if(!c.ini) return;
-    const ini=new Date(c.ini), fim=c.fim?new Date(c.fim):new Date();
-    let cur=new Date(ini.getFullYear(),ini.getMonth(),1);
-    const end2=new Date(fim.getFullYear(),fim.getMonth(),1);
-    let totalMeses=0; let tmp=new Date(cur);
-    while(tmp<=end2){totalMeses++;tmp.setMonth(tmp.getMonth()+1);}
-    totalMeses=Math.max(1,totalMeses);
-    cur=new Date(ini.getFullYear(),ini.getMonth(),1);
-    while(cur<=end2){
-      const key=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0');
-      const lbl=cur.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-      if(!mmap[key])mmap[key]={key,lbl,imp:0,clk:0,tp:0,custo:0,invest:0};
-      const sh=1/totalMeses;
-      mmap[key].imp    +=campImp(c)*sh;
-      mmap[key].clk    +=campClk(c)*sh;
-      mmap[key].tp     +=campTP(c)*sh;
-      mmap[key].custo  +=campCost(c)*sh;
-      mmap[key].invest +=(c.investimento||0)*sh;
-      cur.setMonth(cur.getMonth()+1);
-    }
-  });
-  const mensalRows=Object.values(mmap).sort(function(a,b){return a.key.localeCompare(b.key);});
+  // ── COMPARATIVO MENSAL — dados reais do BigQuery por mês ──
   const mensalTbody=$('ger-mensal-tbody');
   if(mensalTbody){
-    mensalTbody.innerHTML=mensalRows.map(function(r){
+    mensalTbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);">Carregando...</td></tr>';
+
+    // Descobrir meses únicos das campanhas
+    const hoje2 = new Date();
+    const meses = {};
+    camps.forEach(function(c){
+      if(!c.ini) return;
+      let cur = new Date(c.ini.substring(0,7)+'-01');
+      const fimDate = c.fim ? new Date(c.fim.substring(0,7)+'-01') : new Date(hoje2.getFullYear(), hoje2.getMonth(), 1);
+      while(cur <= fimDate && cur <= hoje2){
+        const key = cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0');
+        const lbl = cur.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+        meses[key] = {key, lbl, ini: key+'-01', fim: new Date(cur.getFullYear(), cur.getMonth()+1, 0).toISOString().split('T')[0]};
+        cur.setMonth(cur.getMonth()+1);
+      }
+    });
+
+    // Buscar dados reais do BigQuery para cada mês
+    const mensalData = await Promise.all(Object.values(meses).sort(function(a,b){return a.key.localeCompare(b.key);}).map(async function(m){
+      // Buscar KPI de todas as campanhas no mês
+      const kpis = await Promise.all(camps.map(async function(c){
+        // só buscar se campanha está ativa no mês
+        if(c.fim && c.fim < m.ini) return null;
+        if(c.ini && c.ini > m.fim) return null;
+        const s = c.ini && c.ini > m.ini ? c.ini : m.ini;
+        const e = c.fim && c.fim < m.fim ? c.fim : m.fim;
+        const [kpi, cost] = await Promise.all([
+          apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+s+'&end_date='+e),
+          apiFetch('/api/gestao/data?type=cost&camp_id='+c.id+'&start_date='+s+'&end_date='+e)
+        ]);
+        const invest = (function(){
+          if(!c.ini||!c.fim) return c.investimento||0;
+          const diasTot = Math.max(1,Math.round((new Date(c.fim)-new Date(c.ini))/(86400000)));
+          const diasMes = Math.max(1,Math.round((new Date(e)-new Date(s))/(86400000))+1);
+          return (c.investimento||0) * diasMes/diasTot;
+        })();
+        return {
+          imp: Number((kpi||{}).impressions||0),
+          clk: Number((kpi||{}).clicks_link||(kpi||{}).clicks||0),
+          tp:  Number((kpi||{}).thruplay||0),
+          custo: Number((cost||{}).total_cost||0),
+          invest
+        };
+      }));
+      const r = kpis.filter(Boolean).reduce(function(acc,k){
+        acc.imp+=k.imp; acc.clk+=k.clk; acc.tp+=k.tp; acc.custo+=k.custo; acc.invest+=k.invest;
+        return acc;
+      }, {imp:0,clk:0,tp:0,custo:0,invest:0});
+      return {lbl:m.lbl, ...r};
+    }));
+
+    mensalTbody.innerHTML = mensalData.map(function(r){
       const ctr2=r.imp?(r.clk/r.imp*100):0;
       const vtr2=r.imp?(r.tp/r.imp*100):0;
       const mg=r.invest-r.custo;

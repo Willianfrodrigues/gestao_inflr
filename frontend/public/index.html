@@ -1344,16 +1344,25 @@ async function renderGerencial(){
     const meses = {};
     camps.forEach(function(c){
       if(!c.ini) return;
-      // Garantir formato correto da data (pode vir como DD/MM/YYYY do banco)
       const iniStr = c.ini.includes('/') ? c.ini.split('/').reverse().join('-') : c.ini;
       const fimStr = c.fim ? (c.fim.includes('/') ? c.fim.split('/').reverse().join('-') : c.fim) : null;
-      let cur = new Date(iniStr.substring(0,7)+'-01');
-      const fimDate = fimStr ? new Date(fimStr.substring(0,7)+'-01') : new Date(hoje2.getFullYear(), hoje2.getMonth(), 1);
+      // Usar new Date(year, month, 1) para evitar problema de fuso horário
+      const iniParts = iniStr.substring(0,7).split('-');
+      const fimParts = fimStr ? fimStr.substring(0,7).split('-') : null;
+      let cur = new Date(parseInt(iniParts[0]), parseInt(iniParts[1])-1, 1);
+      const fimDate = fimParts
+        ? new Date(parseInt(fimParts[0]), parseInt(fimParts[1])-1, 1)
+        : new Date(hoje2.getFullYear(), hoje2.getMonth(), 1);
       while(cur <= fimDate && cur <= hoje2){
-        const key = cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0');
+        const y = cur.getFullYear();
+        const m = cur.getMonth();
+        const key = y+'-'+String(m+1).padStart(2,'0');
         const lbl = cur.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-        meses[key] = {key, lbl, ini: key+'-01', fim: new Date(cur.getFullYear(), cur.getMonth()+1, 0).toISOString().split('T')[0]};
-        cur.setMonth(cur.getMonth()+1);
+        // Último dia do mês sem UTC
+        const ultimoDia = new Date(y, m+1, 0);
+        const fimMes = y+'-'+String(m+1).padStart(2,'0')+'-'+String(ultimoDia.getDate()).padStart(2,'0');
+        meses[key] = {key, lbl, ini: key+'-01', fim: fimMes};
+        cur = new Date(y, m+1, 1);
       }
     });
 

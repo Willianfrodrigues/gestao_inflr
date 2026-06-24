@@ -498,23 +498,42 @@ tbody td{padding:10px 13px;font-size:12.5px;}
 
       <!-- ── GERENCIAL ── -->
       <div class="panel active" id="panel-gerencial">
-        <div class="page-hd">
-          <div class="page-title">Painel Gerencial</div>
-          <div class="page-sub">Receita, custo real e margem de todas as campanhas.</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div class="page-hd" style="margin-bottom:0;">
+            <div class="page-title">Painel Gerencial</div>
+            <div class="page-sub">Receita, custo real, margem e consumo de contrato.</div>
+          </div>
+          <button class="btn btn-green btn-sm" onclick="om('m-camp')">+ Campanha</button>
         </div>
-        <div class="kpi-grid" id="ger-kpis" style="margin-bottom:20px;"></div>
 
+        <!-- KPIs -->
+        <div class="kpi-grid" id="ger-kpis" style="margin-bottom:24px;"></div>
 
-        <div class="sec-lbl" style="margin-top:0;">&#127942; Ranking de Desempenho — Margem por Cliente</div>
-        <div id="ger-rank-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:22px;"></div>
+        <!-- Consumo do Contrato por Cliente -->
+        <div class="sec-lbl" style="margin-top:0;">📊 Consumo do Contrato por Cliente</div>
+        <div id="ger-consumo" style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;"></div>
+
+        <!-- Rentabilidade por Campanha -->
+        <div class="sec-lbl">💰 Rentabilidade por Campanha</div>
+        <div class="tbl-card" style="margin-bottom:24px;">
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Campanha</th><th>Cliente</th><th>Plataforma</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>ThruPlay</th><th>VTR</th><th>Custo Real</th><th>Invest. Contratado</th><th>Margem</th><th>% Margem</th><th>Status</th></tr></thead>
+            <tbody id="ger-tbody"></tbody>
+          </table></div>
+        </div>
+
+        <!-- Comparativo Mensal -->
+        <div class="sec-lbl">📅 Comparativo Mensal</div>
         <div class="tbl-card">
           <div class="tbl-top">
-            <div><div class="tbl-ttl">Detalhe por Campanha</div><div class="tbl-sub">Custo real × receita × margem</div></div>
-            <button class="btn btn-ghost btn-sm" onclick="om('m-camp')">+ Campanha</button>
+            <div class="tbl-ttl">Evolução por Mês</div>
+            <select id="ger-cli-filter" onchange="renderGerencial()" style="padding:6px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);font-size:12px;color:var(--text);font-family:Inter,sans-serif;outline:none;">
+              <option value="">Todos os clientes</option>
+            </select>
           </div>
           <div class="tbl-wrap"><table>
-            <thead><tr><th>Campanha</th><th>Cliente</th><th>Plataforma</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>ThruPlay</th><th>VTR</th><th>Custo Real</th><th>Invest. Contratado</th><th>Status</th></tr></thead>
-            <tbody id="ger-tbody"></tbody>
+            <thead><tr><th>Mês</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>ThruPlay</th><th>VTR</th><th>Custo Real</th><th>Receita</th><th>Margem</th><th>% Margem</th></tr></thead>
+            <tbody id="ger-mensal-tbody"></tbody>
           </table></div>
         </div>
       </div>
@@ -1143,152 +1162,221 @@ function renderCampTable(){
 
 // ─── GERENCIAL ───
 async function renderGerencial(){
-  // Buscar KPIs e custos reais do BigQuery para todas as campanhas
   const {start, end} = getDateRange();
+
+  // Popular filtro de cliente
+  const cliFilter = $('ger-cli-filter');
+  if(cliFilter && cliFilter.options.length <= 1){
+    S.clients.forEach(function(c){
+      const opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = c.nome;
+      cliFilter.appendChild(opt);
+    });
+  }
+  const filterCli = (cliFilter||{}).value||'';
+
+  // Buscar KPIs e custos do BigQuery
   await Promise.all(S.camps.map(async function(c){
-    if(c._kpi && c._kpiRange === start+end) return; // cache hit
-    const [kpi, cost] = await Promise.all([
+    if(c._kpi && c._kpiRange === start+end) return;
+    const [kpi, cost, byCamp] = await Promise.all([
       apiFetch('/api/gestao/data?type=kpi&camp_id='+c.id+'&start_date='+start+'&end_date='+end),
-      apiFetch('/api/gestao/data?type=cost&camp_id='+c.id+'&start_date='+start+'&end_date='+end)
+      apiFetch('/api/gestao/data?type=cost&camp_id='+c.id+'&start_date='+start+'&end_date='+end),
+      apiFetch('/api/gestao/data?type=by_campaign&camp_id='+c.id+'&start_date='+start+'&end_date='+end)
     ]);
     c._kpi = kpi && !kpi.error ? kpi : {};
     c._cost = cost && !cost.error ? cost : {};
+    c._byCamp = (byCamp && byCamp.rows) ? byCamp.rows : [];
+    c._kpiByPlt = {};
+    c._byCamp.forEach(function(r){
+      const key = bqPltToKey(r.platform);
+      if(!c._kpiByPlt[key]) c._kpiByPlt[key] = {impressions:0,clicks_link:0,clicks:0,thruplay:0};
+      c._kpiByPlt[key].impressions += Number(r.impressions||0);
+      c._kpiByPlt[key].clicks_link += Number(r.clicks_link||0);
+      c._kpiByPlt[key].thruplay   += Number(r.thruplay||0);
+    });
     c._kpiRange = start+end;
   }));
 
-  function campImp(c){ return Number(c._kpi?.impressions||0); }
-  function campClk(c){ return Number(c._kpi?.clicks_link||c._kpi?.clicks||0); }
-  function campTP(c){  return Number(c._kpi?.thruplay||0); }
-  function campCost(c){ return Number(c._cost?.total_cost||0); }
+  function campImp(c){ return Number((c._kpi||{}).impressions||0); }
+  function campClk(c){ return Number((c._kpi||{}).clicks_link||(c._kpi||{}).clicks||0); }
+  function campTP(c){  return Number((c._kpi||{}).thruplay||0); }
+  function campCost(c){ return Number((c._cost||{}).total_cost||0); }
 
-  const rows=S.clients.map(cli=>{
-    const cs=campsOf(cli.id);
-    const imp=cs.reduce((s,c)=>s+campImp(c),0);
-    const custo=cs.reduce((s,c)=>s+campCost(c),0);
-    const rec=cs.reduce((s,c)=>s+campImp(c)/1000*(c.cpmCli||0),0);
-    const mg=rec-custo;
-    const pct=rec>0?(mg/rec*100):0;
-    return{cli,imp,custo,rec,mg,pct,cs};
-  });
-  const totRec=rows.reduce((s,r)=>s+r.rec,0); // impressões × CPM cliente
-  const totCusto=rows.reduce((s,r)=>s+r.custo,0);
-  const totMg=totRec-totCusto;
-  const totImp=rows.reduce((s,r)=>s+r.imp,0);
-  const mgPct=totRec>0?(totMg/totRec*100):0;
+  const camps = filterCli ? S.camps.filter(function(c){ return c.cid===filterCli; }) : S.camps;
+
+  // ── KPIs DO TOPO ──
+  const totRec   = camps.reduce(function(s,c){ return s+(c.investimento||0); }, 0);
+  const totCusto = camps.reduce(function(s,c){ return s+campCost(c); }, 0);
+  const totMg    = totRec - totCusto;
+  const totImp   = camps.reduce(function(s,c){ return s+campImp(c); }, 0);
+  const totClk   = camps.reduce(function(s,c){ return s+campClk(c); }, 0);
+  const totTP    = camps.reduce(function(s,c){ return s+campTP(c); }, 0);
+  const mgPct    = totRec>0?(totMg/totRec*100):0;
+  const avgCTR   = totImp>0?(totClk/totImp*100):0;
+  const avgVTR   = totImp>0?(totTP/totImp*100):0;
 
   $('ger-kpis').innerHTML=[
-    {l:'Receita Total',v:fmtR(totRec),sub:'CPM cobrado × impressões',c:'var(--green)',kb:'receita bruta'},
-    {l:'Custo Real',v:fmtR(totCusto),sub:'CPM real na plataforma',c:'var(--red)'},
-    {l:'Margem Bruta',v:fmtR(totMg),sub:fmtPct(mgPct)+' de margem',c:'var(--gold)',kb:'lucro'},
-    {l:'Impressões Totais',v:fmt(totImp),sub:'todas as campanhas',c:'var(--blue)'},
-    {l:'Clientes Ativos',v:S.clients.length,sub:'com campanhas',c:'var(--purple)'},
-    {l:'Campanhas',v:S.camps.length,sub:'cadastradas',c:'var(--cyan)'},
-  ].map(k=>`<div class="kpi-card" style="--kc:${k.c}"><div class="kpi-lbl">${k.l}</div><div class="kpi-val">${k.v}</div><div class="kpi-sub">${k.sub}</div>${k.kb?'<div class="kpi-badge kb-up">'+k.kb+'</div>':''}</div>`).join('');
+    {l:'Receita Total',      v:fmtR(totRec),   sub:'soma dos contratos',       c:'var(--green)',  kb:'receita bruta'},
+    {l:'Custo Real',         v:fmtR(totCusto), sub:'CPM real na plataforma',   c:'var(--red)'},
+    {l:'Margem Bruta',       v:fmtR(totMg),    sub:fmtP(mgPct)+' de margem',  c:'var(--gold)',   kb:'lucro'},
+    {l:'Impressões Totais',  v:fmt(totImp),    sub:'no período selecionado',   c:'var(--blue)'},
+    {l:'CTR Médio',          v:fmtP(avgCTR),   sub:'taxa de cliques',          c:'var(--pink)'},
+    {l:'VTR Médio',          v:fmtP(avgVTR),   sub:'view through rate',        c:'var(--purple)'},
+    {l:'Clientes Ativos',    v:S.clients.length,sub:'na carteira',             c:'var(--cyan)'},
+    {l:'Campanhas',          v:camps.length,   sub:'no período',               c:'var(--orange)'},
+  ].map(function(k){
+    return '<div class="kpi-card" style="--kc:'+k.c+'">'
+      +'<div class="kpi-lbl">'+k.l+'</div>'
+      +'<div class="kpi-val">'+k.v+'</div>'
+      +'<div class="kpi-sub">'+k.sub+'</div>'
+      +(k.kb?'<div class="kpi-badge kb-up">'+k.kb+'</div>':'')
+      +'</div>';
+  }).join('');
 
-  // Ranking por cliente — ordenado por margem bruta
-  const rankRows=[...rows].sort((a,b)=>b.mg-a.mg);
-  const rankColors=['var(--green)','var(--gold)','var(--orange)','var(--muted2)'];
-  const rankMedals=['🥇','🥈','🥉',''];
-  if($('ger-rank-cards')){
-    $('ger-rank-cards').innerHTML=rankRows.map((r,i)=>{
-      const col=rankColors[Math.min(i,3)];
-      const medal=rankMedals[Math.min(i,3)];
-      const logoHtml=r.cli.logo?('<img src="'+r.cli.logo+'" style="height:22px;object-fit:contain;border-radius:3px;">'):'';
-      const totImp=r.imp;
-      const totClk=r.cs.reduce((s,c)=>s+campClk(c),0);
-      const ctr=totImp?(totClk/totImp*100):0;
-        const investCli=r.cs.reduce((s,c)=>s+(c.investimento||0),0);
-      const barW=Math.max(0,Math.min(100,r.pct)).toFixed(1);
-      return '<div class="kpi-card" style="--kc:'+col+';border-left:3px solid '+col+';">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-        +'<div style="display:flex;align-items:center;gap:7px;">'
-        +(medal?'<span style="font-size:20px;">'+medal+'</span>':'<span style="font-size:12px;color:var(--muted);font-weight:700;">'+(i+1)+'</span>')
-        +logoHtml
-        +'<div><div style="font-size:13px;font-weight:700;">'+r.cli.nome+'</div>'
-        +'<div style="font-size:9.5px;color:var(--muted);">'+r.cs.length+' campanha(s)</div></div></div>'
-        +'<span class="badge '+(r.pct>=40?'bg-green':r.pct>=20?'bg-gold':'bg-red')+'">'+fmtPct(r.pct)+'</span>'
+  // ── CONSUMO DO CONTRATO ──
+  const consumoEl = $('ger-consumo');
+  if(consumoEl){
+    const cliData = S.clients.filter(function(c){ return !filterCli||c.id===filterCli; }).map(function(cli){
+      const cs = camps.filter(function(c){ return c.cid===cli.id; });
+      const imp    = cs.reduce(function(s,c){ return s+campImp(c); }, 0);
+      const meta   = cs.reduce(function(s,c){ return s+(c.metaImp||0); }, 0);
+      const invest = cs.reduce(function(s,c){ return s+(c.investimento||0); }, 0);
+      const custo  = cs.reduce(function(s,c){ return s+campCost(c); }, 0);
+      const margem = invest - custo;
+      const pctImp = meta>0?(imp/meta*100):0;
+      const pctCusto = invest>0?(custo/invest*100):0;
+      // Dias restantes da campanha mais longa ativa
+      const hoje = new Date().toISOString().split('T')[0];
+      const diasRest = cs.reduce(function(max,c){
+        if(!c.fim||c.fim<hoje) return max;
+        const d = Math.max(0, Math.round((new Date(c.fim)-new Date(hoje))/(1000*60*60*24)));
+        return Math.max(max,d);
+      }, 0);
+      return {cli, cs, imp, meta, invest, custo, margem, pctImp, pctCusto, diasRest};
+    });
+
+    consumoEl.innerHTML = cliData.map(function(d){
+      const cor = d.cli.cor||'#2DD9C0';
+      const pctColor = d.pctImp>=90?'var(--green)':d.pctImp>=70?'var(--gold)':'var(--red)';
+      const logoHtml = d.cli.logo
+        ?'<img src="'+d.cli.logo+'" style="height:24px;object-fit:contain;border-radius:4px;">'
+        :'<div class="sb-av" style="width:28px;height:28px;font-size:10px;background:'+cor+'20;border-color:'+cor+'44;color:'+cor+';">'+d.cli.nome.slice(0,2).toUpperCase()+'</div>';
+
+      return '<div class="card" style="border-left:3px solid '+cor+';">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+        +'<div style="display:flex;align-items:center;gap:10px;">'+logoHtml
+        +'<div><div style="font-weight:700;font-size:14px;">'+d.cli.nome+'</div>'
+        +'<div style="font-size:10.5px;color:var(--muted);">'+d.cs.length+' campanha(s) · '+d.diasRest+' dias restantes</div></div></div>'
+        +'<div style="display:flex;gap:16px;text-align:right;">'
+        +'<div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Margem</div>'
+        +'<div style="font-size:14px;font-weight:700;color:'+(d.margem>=0?'var(--green)':'var(--red)')+';">'+fmtR(d.margem)+'</div></div>'
+        +'<div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">% Margem</div>'
+        +'<div style="font-size:14px;font-weight:700;color:'+(d.margem>=0?'var(--green)':'var(--red)')+';">'+(d.invest>0?fmtP(d.margem/d.invest*100):'—')+'</div></div>'
+        +'</div></div>'
+        // Barra impressões
+        +(d.meta>0?'<div style="margin-bottom:8px;">'
+        +'<div style="display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:4px;">'
+        +'<span style="color:var(--muted);">Impressões entregues</span>'
+        +'<span style="color:'+pctColor+';font-weight:700;">'+fmtP(d.pctImp)+' de '+fmt(d.meta)+'</span></div>'
+        +'<div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;">'
+        +'<div style="width:'+Math.min(d.pctImp,100).toFixed(1)+'%;height:100%;background:'+cor+';border-radius:4px;transition:width .6s;"></div></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px;">'
+        +'<span>'+fmt(d.imp)+' entregues</span><span>'+fmt(Math.max(0,d.meta-d.imp))+' restantes</span></div>'
+        +'</div>':'')
+        // Barra investimento
+        +'<div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:4px;">'
+        +'<span style="color:var(--muted);">Consumo do contrato</span>'
+        +'<span style="color:var(--red);font-weight:700;">'+fmtR(d.custo)+' / '+fmtR(d.invest)+'</span></div>'
+        +'<div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;">'
+        +'<div style="width:'+Math.min(d.pctCusto,100).toFixed(1)+'%;height:100%;background:var(--red);border-radius:4px;opacity:.7;transition:width .6s;"></div></div>'
         +'</div>'
-        +'<div style="height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:10px;">'
-        +'<div style="width:'+barW+'%;height:100%;background:'+col+';border-radius:2px;"></div></div>'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">'
-        +[
-          {l:'Impressões',v:fmt(totImp),c:''},
-          {l:'Cliques',v:fmt(totClk),c:'color:var(--green);'},
-          {l:'CTR',v:fmtP(ctr),c:'color:var(--pink);'},
-          {l:'Custo Real',v:fmtR(r.custo),c:'color:var(--red);'},
-          {l:'Invest. Contratado',v:r.cs.reduce((s,c)=>s+(c.investimento||0),0)>0?fmtR(r.cs.reduce((s,c)=>s+(c.investimento||0),0)):'—',c:'color:var(--gold);font-weight:700;'},
-          {l:'Margem Bruta',v:fmtR(r.mg),c:r.mg>=0?'color:var(--green);font-weight:700;':'color:var(--red);font-weight:700;'},
-        ].map(k=>'<div style="background:var(--surface2);border-radius:6px;padding:6px 8px;">'
-          +'<div style="font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">'+k.l+'</div>'
-          +'<div style="font-size:12px;font-weight:600;'+k.c+'">'+k.v+'</div></div>').join('')
-        +'</div></div>';
+        +'</div>';
     }).join('');
   }
 
-  const maxImp=Math.max(...S.camps.map(c=>campImp(c)),1);
+  // ── RENTABILIDADE POR CAMPANHA ──
+  const maxImp=Math.max(...camps.map(c=>campImp(c)),1);
   const gerRows=[];
-  S.camps.forEach(function(c){
+  camps.forEach(function(c){
     const cli=cliById(c.cid);
     const pltsArr=Array.isArray(c.plt)?c.plt:[c.plt||'meta'];
     const hasPltData=Object.keys(c._kpiByPlt||{}).length>0;
+    const imp=campImp(c), clk=campClk(c), tp=campTP(c), custo=campCost(c);
+    const ctr=imp?(clk/imp*100):0, vtr=imp?(tp/imp*100):0;
+    const margem=(c.investimento||0)-custo;
+    const mgPctC=(c.investimento||0)>0?(margem/(c.investimento||0)*100):0;
+    const ipct=(imp/maxImp*100).toFixed(1);
+    const pltBadges=pltsArr.map(function(p){
+      const pltClass=p==='tiktok'?'plt-tiktok':p==='dv360'?'plt-dv360':'plt-meta';
+      return '<span class="plt '+pltClass+'" style="margin-right:2px;">'+(PLT_LBL[p]||p)+'</span>';
+    }).join('');
+    const mgColor=margem>=0?'var(--green)':'var(--red)';
+    gerRows.push('<tr>'
+      +'<td style="font-size:11.5px;font-weight:600;max-width:130px;">'+c.nome+'</td>'
+      +'<td><span style="display:inline-flex;align-items:center;gap:5px;"><span class="dot" style="background:'+(cli?.cor||'#888')+'"></span>'+(cli?.nome||'—')+'</span></td>'
+      +'<td>'+pltBadges+'</td>'
+      +'<td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:'+ipct+'%;background:'+(cli?.cor||'var(--gold)')+'"></div></div><span class="bar-v">'+fmt(imp)+'</span></div></td>'
+      +'<td style="color:var(--green);font-weight:600;">'+fmt(clk)+'</td>'
+      +'<td style="color:var(--pink);">'+fmtP(ctr)+'</td>'
+      +'<td>'+fmt(tp)+'</td>'
+      +'<td style="color:var(--purple);">'+fmtP(vtr)+'</td>'
+      +'<td style="color:var(--red);font-weight:600;">'+fmtR(custo)+'</td>'
+      +'<td style="color:var(--gold);font-weight:700;">'+(c.investimento?fmtR(c.investimento):'—')+'</td>'
+      +'<td style="color:'+mgColor+';font-weight:700;">'+fmtR(margem)+'</td>'
+      +'<td><span class="badge '+(mgPctC>=30?'bg-green':mgPctC>=10?'bg-gold':'bg-red')+'">'+fmtP(mgPctC)+'</span></td>'
+      +'<td>'+campStatus(c)+'</td></tr>');
+  });
+  $('ger-tbody').innerHTML=gerRows.length?gerRows.join(''):'<tr><td colspan="13"><div class="empty"><p>Nenhuma campanha no período.</p></div></td></tr>';
 
-    if(hasPltData){
-      // Mostrar uma linha por plataforma com dados reais
-      pltsArr.forEach(function(p){
-        const pltKpi=(c._kpiByPlt||{})[p]||null;
-        const imp=Number((pltKpi||{}).impressions||0);
-        if(!imp) return; // ocultar plataforma sem dados
-        const clk=Number((pltKpi||{}).clicks_link||(pltKpi||{}).clicks||0);
-        const tp=Number((pltKpi||{}).thruplay||0);
-        const ctr=imp?(clk/imp*100):0;
-        const vtr=imp?(tp/imp*100):0;
-        const custoReal=Number((pltKpi||{}).total_cost||0)||campCost(c)/pltsArr.length;
-        const ipct=(imp/maxImp*100).toFixed(1);
-        const pltClass=p==='tiktok'?'plt-tiktok':p==='dv360'?'plt-dv360':'plt-meta';
-        gerRows.push('<tr>'
-          +'<td style="font-size:11.5px;font-weight:600;max-width:140px;">'+c.nome+'</td>'
-          +'<td><span style="display:inline-flex;align-items:center;gap:5px;"><span class="dot" style="background:'+(cli?.cor||'#888')+'"></span>'+(cli?.nome||'—')+'</span></td>'
-          +'<td><span class="plt '+pltClass+'">'+(PLT_LBL[p]||p)+'</span></td>'
-          +'<td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:'+ipct+'%;background:'+(cli?.cor||'var(--gold)')+'"></div></div><span class="bar-v">'+fmt(imp)+'</span></div></td>'
-          +'<td style="color:var(--green);font-weight:600;">'+fmt(clk)+'</td>'
-          +'<td style="color:var(--pink);">'+fmtP(ctr)+'</td>'
-          +'<td>'+fmt(tp)+'</td>'
-          +'<td style="color:var(--purple);">'+fmtP(vtr)+'</td>'
-          +'<td style="color:var(--red);font-weight:600;">'+fmtR(campCost(c))+'</td>'
-          +'<td style="color:var(--gold);font-weight:700;">'+(c.investimento?fmtR(c.investimento):'—')+'</td>'
-          +'<td>'+campStatus(c)+'</td></tr>');
-      });
-    } else {
-      // Sem dados por plataforma — mostrar 1 linha com total e todas as plataformas
-      const imp=campImp(c);
-      if(!imp && campImp(c)===0) return;
-      const clk=Number((c._kpi||{}).clicks_link||(c._kpi||{}).clicks||0);
-      const tp=Number((c._kpi||{}).thruplay||0);
-      const ctr=imp?(clk/imp*100):0;
-      const vtr=imp?(tp/imp*100):0;
-      const ipct=(imp/maxImp*100).toFixed(1);
-      const pltBadges=pltsArr.map(function(p){
-        const pltClass=p==='tiktok'?'plt-tiktok':p==='dv360'?'plt-dv360':'plt-meta';
-        return '<span class="plt '+pltClass+'" style="margin-right:2px;">'+(PLT_LBL[p]||p)+'</span>';
-      }).join('');
-      gerRows.push('<tr>'
-        +'<td style="font-size:11.5px;font-weight:600;max-width:140px;">'+c.nome+'</td>'
-        +'<td><span style="display:inline-flex;align-items:center;gap:5px;"><span class="dot" style="background:'+(cli?.cor||'#888')+'"></span>'+(cli?.nome||'—')+'</span></td>'
-        +'<td>'+pltBadges+'</td>'
-        +'<td><div class="bar-w"><div class="bar-bg"><div class="bar-f" style="width:'+ipct+'%;background:'+(cli?.cor||'var(--gold)')+'"></div></div><span class="bar-v">'+fmt(imp)+'</span></div></td>'
-        +'<td style="color:var(--green);font-weight:600;">'+fmt(clk)+'</td>'
-        +'<td style="color:var(--pink);">'+fmtP(ctr)+'</td>'
-        +'<td>'+fmt(tp)+'</td>'
-        +'<td style="color:var(--purple);">'+fmtP(vtr)+'</td>'
-        +'<td style="color:var(--red);font-weight:600;">'+fmtR(campCost(c))+'</td>'
-        +'<td style="color:var(--gold);font-weight:700;">'+(c.investimento?fmtR(c.investimento):'—')+'</td>'
-        +'<td>'+campStatus(c)+'</td></tr>');
+  // ── COMPARATIVO MENSAL ──
+  const mmap={};
+  camps.forEach(function(c){
+    if(!c.ini) return;
+    const ini=new Date(c.ini), fim=c.fim?new Date(c.fim):new Date();
+    let cur=new Date(ini.getFullYear(),ini.getMonth(),1);
+    const end2=new Date(fim.getFullYear(),fim.getMonth(),1);
+    let totalMeses=0; let tmp=new Date(cur);
+    while(tmp<=end2){totalMeses++;tmp.setMonth(tmp.getMonth()+1);}
+    totalMeses=Math.max(1,totalMeses);
+    cur=new Date(ini.getFullYear(),ini.getMonth(),1);
+    while(cur<=end2){
+      const key=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0');
+      const lbl=cur.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+      if(!mmap[key])mmap[key]={key,lbl,imp:0,clk:0,tp:0,custo:0,invest:0};
+      const sh=1/totalMeses;
+      mmap[key].imp    +=campImp(c)*sh;
+      mmap[key].clk    +=campClk(c)*sh;
+      mmap[key].tp     +=campTP(c)*sh;
+      mmap[key].custo  +=campCost(c)*sh;
+      mmap[key].invest +=(c.investimento||0)*sh;
+      cur.setMonth(cur.getMonth()+1);
     }
   });
-  $('ger-tbody').innerHTML=gerRows.join('');
+  const mensalRows=Object.values(mmap).sort(function(a,b){return a.key.localeCompare(b.key);});
+  const mensalTbody=$('ger-mensal-tbody');
+  if(mensalTbody){
+    mensalTbody.innerHTML=mensalRows.map(function(r){
+      const ctr2=r.imp?(r.clk/r.imp*100):0;
+      const vtr2=r.imp?(r.tp/r.imp*100):0;
+      const mg=r.invest-r.custo;
+      const mgP=r.invest>0?(mg/r.invest*100):0;
+      const mgC=mg>=0?'var(--green)':'var(--red)';
+      return '<tr>'
+        +'<td style="font-weight:600;text-transform:capitalize;">'+r.lbl+'</td>'
+        +'<td>'+fmt(Math.round(r.imp))+'</td>'
+        +'<td style="color:var(--green);">'+fmt(Math.round(r.clk))+'</td>'
+        +'<td style="color:var(--pink);">'+fmtP(ctr2)+'</td>'
+        +'<td>'+fmt(Math.round(r.tp))+'</td>'
+        +'<td style="color:var(--purple);">'+fmtP(vtr2)+'</td>'
+        +'<td style="color:var(--red);">'+fmtR(r.custo)+'</td>'
+        +'<td style="color:var(--gold);font-weight:700;">'+fmtR(r.invest)+'</td>'
+        +'<td style="color:'+mgC+';font-weight:700;">'+fmtR(mg)+'</td>'
+        +'<td><span class="badge '+(mgP>=30?'bg-green':mgP>=10?'bg-gold':'bg-red')+'">'+fmtP(mgP)+'</span></td>'
+        +'</tr>';
+    }).join('');
+  }
 }
-
-
 // ─── EXTRAÇÃO INTELIGENTE DE INFLUENCIADOR DO AD NAME ───
 const _FMT=new Set(['STORY','STORIES','REEL','REELS','FEED','VIDEO','TIKTOK','META','DV360',
   'COPA','AWARENESS','CONVERSAO','CONSIDERACAO','15S','30S','60S','TOPVIEW','SPARK','ADS',

@@ -2861,9 +2861,12 @@ async function loadInflAdmin(){
   tbody.innerHTML = filtered.map(function(r,i){
     const auto = extractInfluencer(r.ad);
     const corr = _inflCorrections[r.ad]||'';
-    const autoHtml = auto
-      ? '<span style="color:var(--green);font-weight:600;">'+auto+'</span>'
-      : '<span style="padding:3px 8px;border-radius:12px;background:var(--red-bg);color:var(--red);font-size:11px;font-weight:600;cursor:pointer;" onclick="openInflEdit('+i+')">⚠️ sem correspondência — clique para analisar</span>';
+    // Se tem correção salva, não mostrar "sem correspondência"
+    const autoHtml = corr
+      ? '<span style="color:var(--muted);font-size:11px;">extraído automaticamente</span>'
+      : auto
+        ? '<span style="color:var(--green);font-weight:600;">'+auto+'</span>'
+        : '<span style="padding:3px 8px;border-radius:12px;background:var(--red-bg);color:var(--red);font-size:11px;font-weight:600;cursor:pointer;" onclick="openInflEdit('+i+')">⚠️ sem correspondência — clique para analisar</span>';
     const corrHtml = corr
       ? '<span style="color:var(--gold);font-weight:700;">'+corr+'</span>'
       : '<span style="color:var(--muted);font-size:11px;">—</span>';
@@ -2872,7 +2875,7 @@ async function loadInflAdmin(){
       : '<span style="color:var(--muted);font-size:11px;">—</span>';
 
     return '<tr id="inflrow-'+i+'">'
-      +'<td style="color:var(--muted);font-size:11px;">'+(i+1)+'</td>'
+      +'<td style="color:var(--muted);font-size:11px;"><label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="infl-row-check" onchange="toggleBulkSelect('+i+')" style="cursor:pointer;accent-color:var(--green);width:14px;height:14px;"> '+(i+1)+'</label></td>'
       +'<td style="font-size:11px;max-width:200px;word-break:break-word;color:var(--muted2);">'+r.ad+'</td>'
       +'<td style="max-width:160px;">'+groupHtml+'</td>'
       +'<td>'+autoHtml+'</td>'

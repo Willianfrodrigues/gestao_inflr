@@ -1846,7 +1846,7 @@ async function renderCliView(cid){
   const podOrd=[sorted[1],sorted[0],sorted[2]].filter(Boolean);
   const podIdx=[1,0,2];
   const medals=['🥇','🥈','🥉'];
-  const pColors=['#C0C0C0',cor,'#CD7F32'];
+  const pColors=['#F59E0B','#94A3B8','#CD7F32']; // ouro, prata, bronze
   const pHeights=['120px','145px','100px'];
 
   updateCliDateDisplay();
@@ -2023,7 +2023,7 @@ async function loadCliInfluencers(){
   }
 
   const medals=['🥇','🥈','🥉'];
-  const pColors=['#C0C0C0',cor,'#CD7F32'];
+  const pColors=['#F59E0B','#94A3B8','#CD7F32']; // ouro, prata, bronze
   const pHeights=['120px','145px','100px'];
   const top3=inflData.slice(0,3);
   const podOrd=top3.length>=2?[top3[1],top3[0],top3[2]].filter(Boolean):top3;

@@ -100,7 +100,7 @@ class handler(BaseHTTPRequestHandler):
                 q = f"""
                 SELECT
                     TRIM(COALESCE(NULLIF(TRIM(INFLUENCIADOR),''),NULLIF(TRIM(AD_NAME),''),'Sem Influenciador')) AS influenciador,
-                    AD_NAME, platform, CAMPAIGN_NAME,
+                    AD_NAME, AD_GROUP_NAME, platform, CAMPAIGN_NAME,
                     SUM(COALESCE(IMPRESSIONS,0))  AS impressions,
                     SUM(COALESCE(CLICKS_LINK,0))  AS clicks_link,
                     SUM(COALESCE(CLICKS,0))       AS clicks,
@@ -109,7 +109,7 @@ class handler(BaseHTTPRequestHandler):
                     SAFE_DIVIDE(SUM(COALESCE(THRUPLAY,0)),NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0))*100 AS vtr
                 FROM {BQ_TABLE_3}
                 WHERE date BETWEEN '{start}' AND '{end}' AND {f}
-                GROUP BY influenciador, AD_NAME, platform, CAMPAIGN_NAME
+                GROUP BY influenciador, AD_NAME, AD_GROUP_NAME, platform, CAMPAIGN_NAME
                 ORDER BY impressions DESC
                 """
                 return self._send(json_response({"rows": bq_rows(q)}))

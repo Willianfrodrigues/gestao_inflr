@@ -1624,7 +1624,7 @@ function renderOrgTab(rows, cor){
     +(top3.length?'<div class="sec-lbl" style="margin-top:0;">&#127942; Ranking Orgânico</div>'
     +'<div style="margin-bottom:22px;"><div class="podium-wrap">'
     +podOrd.map(function(r,i){
-      const oi=podIdx[i]||i;
+      const oi=podIdx[i]!==undefined?podIdx[i]:i;
       const col=pColors[oi]||cor;
       const h2=pHeights[oi]||'90px';
       return '<div class="podium-col"><div class="podium-info"><div class="podium-medal">'+medals[oi]+'</div>'
@@ -1707,7 +1707,7 @@ async function loadOrgCliView(orgCamps, cor){
     +(top3.length?'<div class="sec-lbl" style="margin-top:0;">&#127942; Ranking Influenciadores</div>'
     +'<div style="margin-bottom:22px;"><div class="podium-wrap">'
     +podOrd.map(function(r,i){
-      const oi=podIdx[i]||i; const col=pColors[oi]||cor; const h=pHeights[oi]||'90px';
+      const oi=podIdx[i]!==undefined?podIdx[i]:i; const col=pColors[oi]||cor; const h=pHeights[oi]||'90px';
       return '<div class="podium-col"><div class="podium-info">'
         +'<div class="podium-medal">'+medals[oi]+'</div>'
         +'<div class="podium-name">'+r.name+'</div>'
@@ -2035,7 +2035,7 @@ async function loadCliInfluencers(){
     '<div class="sec-lbl" style="margin-top:0;">🏆 Top Influenciadores</div>'
     +'<div style="margin-bottom:20px;"><div class="podium-wrap">'
     +podOrd.map(function(inf,i){
-      const oi=podIdx[i]||i;const col=pColors[oi]||cor;const h=pHeights[oi]||'80px';
+      const oi=podIdx[i]!==undefined?podIdx[i]:i;const col=pColors[oi]||cor;const h=pHeights[oi]||'80px';
       return '<div class="podium-col"><div class="podium-info">'
         +'<div class="podium-medal">'+medals[oi]+'</div>'
         +'<div class="podium-name">'+inf.name+'</div>'

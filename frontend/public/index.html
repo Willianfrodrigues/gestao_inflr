@@ -1612,7 +1612,7 @@ function renderOrgTab(rows, cor){
   const top3=ranking.slice(0,3);
   const podOrd=top3.length>=2?[top3[1],top3[0],top3[2]].filter(Boolean):top3;
   const podIdx=top3.length>=2?[1,0,2]:[0];
-  const pHeights=['140px','165px','115px'];
+  const pHeights=['165px','130px','100px']; // 1º=mais alto, 2º=médio, 3º=menor
   const maxImp=Math.max(...ranking.map(r=>r.imp),1);
 
   return '<div class="kpi-grid" style="margin-bottom:20px;">'
@@ -1694,7 +1694,7 @@ async function loadOrgCliView(orgCamps, cor){
   const top3 = ranking.slice(0,3);
   const podOrd = top3.length>=2?[top3[1],top3[0],top3[2]].filter(Boolean):top3;
   const podIdx = top3.length>=2?[1,0,2]:[0];
-  const pHeights = ['140px','165px','115px'];
+  const pHeights = ['165px','130px','100px']; // 1º=mais alto, 2º=médio, 3º=menor
   const maxImp = Math.max.apply(null, ranking.map(function(r){return r.imp;}));
 
   el.innerHTML =
@@ -1847,7 +1847,7 @@ async function renderCliView(cid){
   const podIdx=[1,0,2];
   const medals=['🥇','🥈','🥉'];
   const pColors=['#F59E0B','#94A3B8','#CD7F32']; // ouro, prata, bronze
-  const pHeights=['120px','145px','100px'];
+  const pHeights=['165px','130px','100px']; // 1º=mais alto, 2º=médio, 3º=menor
 
   updateCliDateDisplay();
   $('cv-content').innerHTML=`
@@ -2024,7 +2024,7 @@ async function loadCliInfluencers(){
 
   const medals=['🥇','🥈','🥉'];
   const pColors=['#F59E0B','#94A3B8','#CD7F32']; // ouro, prata, bronze
-  const pHeights=['120px','145px','100px'];
+  const pHeights=['165px','130px','100px']; // 1º=mais alto, 2º=médio, 3º=menor
   const top3=inflData.slice(0,3);
   const podOrd=top3.length>=2?[top3[1],top3[0],top3[2]].filter(Boolean):top3;
   const podIdx=top3.length>=2?[1,0,2]:[0];

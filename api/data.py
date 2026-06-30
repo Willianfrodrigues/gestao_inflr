@@ -76,8 +76,13 @@ class handler(BaseHTTPRequestHandler):
                     SUM(COALESCE(total_comments,0)) AS comments,
                     SUM(COALESCE(total_reacoes,0))  AS reactions,
                     SUM(COALESCE(total_compartilhamento,0)) AS shares,
+                    SUM(COALESCE(total_comments,0)+COALESCE(total_compartilhamento,0)+COALESCE(total_reacoes,0)+COALESCE(total_salvamentos,0)) AS engagement,
                     SAFE_DIVIDE(SUM(COALESCE(CLICKS_LINK,0)),NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0))*100 AS ctr,
-                    SAFE_DIVIDE(SUM(COALESCE(THRUPLAY,0)),NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0))*100 AS vtr
+                    SAFE_DIVIDE(SUM(COALESCE(THRUPLAY,0)),NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0))*100 AS vtr,
+                    SAFE_DIVIDE(
+                        SUM(COALESCE(total_comments,0)+COALESCE(total_compartilhamento,0)+COALESCE(total_reacoes,0)+COALESCE(total_salvamentos,0)),
+                        NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0)
+                    )*100 AS engagement_rate
                 FROM {BQ_TABLE_3}
                 WHERE date BETWEEN '{start}' AND '{end}' AND {f}
                 """
@@ -105,8 +110,13 @@ class handler(BaseHTTPRequestHandler):
                     SUM(COALESCE(CLICKS_LINK,0))  AS clicks_link,
                     SUM(COALESCE(CLICKS,0))       AS clicks,
                     SUM(COALESCE(THRUPLAY,0))     AS thruplay,
+                    SUM(COALESCE(total_comments,0)+COALESCE(total_compartilhamento,0)+COALESCE(total_reacoes,0)+COALESCE(total_salvamentos,0)) AS engagement,
                     SAFE_DIVIDE(SUM(COALESCE(CLICKS_LINK,0)),NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0))*100 AS ctr,
-                    SAFE_DIVIDE(SUM(COALESCE(THRUPLAY,0)),NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0))*100 AS vtr
+                    SAFE_DIVIDE(SUM(COALESCE(THRUPLAY,0)),NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0))*100 AS vtr,
+                    SAFE_DIVIDE(
+                        SUM(COALESCE(total_comments,0)+COALESCE(total_compartilhamento,0)+COALESCE(total_reacoes,0)+COALESCE(total_salvamentos,0)),
+                        NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0)
+                    )*100 AS engagement_rate
                 FROM {BQ_TABLE_3}
                 WHERE date BETWEEN '{start}' AND '{end}' AND {f}
                 GROUP BY influenciador, AD_NAME, AD_GROUP_NAME, platform, CAMPAIGN_NAME
@@ -121,7 +131,12 @@ class handler(BaseHTTPRequestHandler):
                     SUM(COALESCE(CLICKS_LINK,0))  AS clicks_link,
                     SUM(COALESCE(CLICKS,0))       AS clicks,
                     SUM(COALESCE(THRUPLAY,0))     AS thruplay,
-                    SAFE_DIVIDE(SUM(COALESCE(CLICKS_LINK,0)),NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0))*100 AS ctr
+                    SUM(COALESCE(total_comments,0)+COALESCE(total_compartilhamento,0)+COALESCE(total_reacoes,0)+COALESCE(total_salvamentos,0)) AS engagement,
+                    SAFE_DIVIDE(SUM(COALESCE(CLICKS_LINK,0)),NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0))*100 AS ctr,
+                    SAFE_DIVIDE(
+                        SUM(COALESCE(total_comments,0)+COALESCE(total_compartilhamento,0)+COALESCE(total_reacoes,0)+COALESCE(total_salvamentos,0)),
+                        NULLIF(SUM(COALESCE(IMPRESSIONS,0)),0)
+                    )*100 AS engagement_rate
                 FROM {BQ_TABLE_3}
                 WHERE date BETWEEN '{start}' AND '{end}' AND {f}
                 GROUP BY platform, CAMPAIGN_NAME ORDER BY impressions DESC

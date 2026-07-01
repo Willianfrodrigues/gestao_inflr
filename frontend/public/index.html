@@ -392,16 +392,21 @@ tbody td{padding:10px 13px;font-size:12.5px;}
     </div>
     <div class="field">
       <label>Colunas — Todas as Campanhas</label>
-      <div class="cb-group" id="cl-mets-campanhas">
+            <div class="cb-group" id="cl-mets-campanhas">
         <label class="cb-pill on"><input type="checkbox" value="impressions" checked>Impressões</label>
         <label class="cb-pill on"><input type="checkbox" value="clicks" checked>Cliques</label>
         <label class="cb-pill on"><input type="checkbox" value="ctr" checked>CTR</label>
         <label class="cb-pill on"><input type="checkbox" value="thruplay" checked>ThruPlay</label>
         <label class="cb-pill on"><input type="checkbox" value="vtr" checked>VTR</label>
+        <label class="cb-pill"><input type="checkbox" value="reach">Alcance</label>
+        <label class="cb-pill"><input type="checkbox" value="frequency">Frequência</label>
         <label class="cb-pill"><input type="checkbox" value="comments">Comentários</label>
         <label class="cb-pill"><input type="checkbox" value="shares">Compartilhamentos</label>
         <label class="cb-pill"><input type="checkbox" value="likes">Curtidas</label>
         <label class="cb-pill"><input type="checkbox" value="views100">Views 100%</label>
+        <label class="cb-pill"><input type="checkbox" value="cost">Investimento</label>
+        <label class="cb-pill"><input type="checkbox" value="cpc">CPC</label>
+        <label class="cb-pill"><input type="checkbox" value="cpm_ef">CPM Efetivo</label>
         <label class="cb-pill"><input type="checkbox" value="engagement">Engajamento</label>
         <label class="cb-pill"><input type="checkbox" value="engagement_rate">Taxa de Engajamento</label>
       </div>
@@ -409,12 +414,21 @@ tbody td{padding:10px 13px;font-size:12.5px;}
     </div>
     <div class="field">
       <label>Colunas — Ranking de Influenciadores</label>
-      <div class="cb-group" id="cl-mets-influencers">
+            <div class="cb-group" id="cl-mets-influencers">
         <label class="cb-pill on"><input type="checkbox" value="impressions" checked>Impressões</label>
         <label class="cb-pill on"><input type="checkbox" value="clicks" checked>Cliques</label>
         <label class="cb-pill on"><input type="checkbox" value="ctr" checked>CTR</label>
         <label class="cb-pill on"><input type="checkbox" value="thruplay" checked>ThruPlay</label>
         <label class="cb-pill on"><input type="checkbox" value="vtr" checked>VTR</label>
+        <label class="cb-pill"><input type="checkbox" value="reach">Alcance</label>
+        <label class="cb-pill"><input type="checkbox" value="frequency">Frequência</label>
+        <label class="cb-pill"><input type="checkbox" value="comments">Comentários</label>
+        <label class="cb-pill"><input type="checkbox" value="shares">Compartilhamentos</label>
+        <label class="cb-pill"><input type="checkbox" value="likes">Curtidas</label>
+        <label class="cb-pill"><input type="checkbox" value="views100">Views 100%</label>
+        <label class="cb-pill"><input type="checkbox" value="cost">Investimento</label>
+        <label class="cb-pill"><input type="checkbox" value="cpc">CPC</label>
+        <label class="cb-pill"><input type="checkbox" value="cpm_ef">CPM Efetivo</label>
         <label class="cb-pill"><input type="checkbox" value="engagement">Engajamento</label>
         <label class="cb-pill"><input type="checkbox" value="engagement_rate">Taxa de Engajamento</label>
       </div>
@@ -422,12 +436,21 @@ tbody td{padding:10px 13px;font-size:12.5px;}
     </div>
     <div class="field">
       <label>Colunas — Análise por Ad Name</label>
-      <div class="cb-group" id="cl-mets-adname">
+            <div class="cb-group" id="cl-mets-adname">
         <label class="cb-pill on"><input type="checkbox" value="impressions" checked>Impressões</label>
         <label class="cb-pill on"><input type="checkbox" value="clicks" checked>Cliques</label>
         <label class="cb-pill on"><input type="checkbox" value="ctr" checked>CTR</label>
         <label class="cb-pill on"><input type="checkbox" value="thruplay" checked>ThruPlay</label>
         <label class="cb-pill on"><input type="checkbox" value="vtr" checked>VTR</label>
+        <label class="cb-pill"><input type="checkbox" value="reach">Alcance</label>
+        <label class="cb-pill"><input type="checkbox" value="frequency">Frequência</label>
+        <label class="cb-pill"><input type="checkbox" value="comments">Comentários</label>
+        <label class="cb-pill"><input type="checkbox" value="shares">Compartilhamentos</label>
+        <label class="cb-pill"><input type="checkbox" value="likes">Curtidas</label>
+        <label class="cb-pill"><input type="checkbox" value="views100">Views 100%</label>
+        <label class="cb-pill"><input type="checkbox" value="cost">Investimento</label>
+        <label class="cb-pill"><input type="checkbox" value="cpc">CPC</label>
+        <label class="cb-pill"><input type="checkbox" value="cpm_ef">CPM Efetivo</label>
         <label class="cb-pill"><input type="checkbox" value="engagement">Engajamento</label>
         <label class="cb-pill"><input type="checkbox" value="engagement_rate">Taxa de Engajamento</label>
       </div>
@@ -514,7 +537,7 @@ tbody td{padding:10px 13px;font-size:12.5px;}
       <div class="sb-sep">Visão Geral</div>
       <button class="nav-item active" onclick="goTo('gerencial',this)"><span class="nav-ico">📊</span>Gerencial</button>
       <button class="nav-item" onclick="goTo('cliente-view',this)"><span class="nav-ico">👁</span>Ver como Cliente</button>
-      <button class="nav-item" onclick="goTo('cs-painel',this)"><span class="nav-ico">🎯</span>Painel CS</button>
+      <button class="nav-item" onclick="goTo('cs-painel',this)"><span class="nav-ico">🎯</span>Painel CS (Beta)</button>
       <button class="nav-item" onclick="goTo('financeiro',this)"><span class="nav-ico">💰</span>Financeiro</button>
       <div class="sb-sep">Configuração</div>
       <button class="nav-item" onclick="goTo('adm-campanhas',this)"><span class="nav-ico">🏷</span>Campanhas</button>
@@ -661,7 +684,7 @@ tbody td{padding:10px 13px;font-size:12.5px;}
       <!-- ── CS PAINEL ── -->
       <div class="panel" id="panel-cs-painel">
         <div class="page-hd">
-          <div class="page-title">Painel Customer Success</div>
+          <div class="page-title">Painel Customer Success <span class="badge bg-gold">BETA</span></div>
           <div class="page-sub">Visão geral da carteira, status de campanhas e desempenho de influenciadores.</div>
         </div>
 
@@ -729,7 +752,7 @@ tbody td{padding:10px 13px;font-size:12.5px;}
       <!-- ── FINANCEIRO ── -->
       <div class="panel" id="panel-financeiro">
         <div class="page-hd">
-          <div class="page-title">Financeiro</div>
+          <div class="page-title">Financeiro <span class="badge bg-gold">BETA</span></div>
           <div class="page-sub">Gastos por plataforma, campanha e mês.</div>
         </div>
 
